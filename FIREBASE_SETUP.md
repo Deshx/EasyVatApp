@@ -28,6 +28,12 @@ service cloud.firestore {
       allow create: if request.auth != null && request.auth.uid == request.resource.data.userId;
     }
     
+    // For companies, users can only see their own companies
+    match /companies/{companyId} {
+      allow read, write: if request.auth != null && request.auth.uid == resource.data.userId;
+      allow create: if request.auth != null && request.auth.uid == request.resource.data.userId;
+    }
+    
     // Default deny all other access
     match /{document=**} {
       allow read, write: if false;
@@ -77,4 +83,13 @@ The application expects the following collections:
 
 2. `invoices` - Stores invoice data (will be created as needed)
    - Document ID: Auto-generated
-   - Fields will include userId to link to the user who created it 
+   - Fields will include userId to link to the user who created it
+
+3. `companies` - Stores company information for invoices
+   - Document ID: Auto-generated
+   - Fields:
+     - name: string
+     - address: string
+     - vatNumber: string
+     - userId: string (links to the user who created it)
+     - createdAt: timestamp 
