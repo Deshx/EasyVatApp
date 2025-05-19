@@ -4,9 +4,11 @@ import { useAuth } from "@/lib/hooks/useAuth";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import { doc, getDoc } from "firebase/firestore";
+import { db } from "@/lib/firebase/firebase";
 
 export default function Dashboard() {
-  const { user, loading, error, signOut } = useAuth();
+  const { user, loading, error, signOut, isNewUser } = useAuth();
   const router = useRouter();
   const [signOutLoading, setSignOutLoading] = useState(false);
 
@@ -14,8 +16,14 @@ export default function Dashboard() {
     // Redirect to login if not authenticated
     if (!loading && !user) {
       router.push("/login");
+      return;
     }
-  }, [user, loading, router]);
+
+    // If user is flagged as new, redirect to profile setup
+    if (!loading && user && isNewUser) {
+      router.push("/profile-setup");
+    }
+  }, [user, loading, router, isNewUser]);
 
   const handleSignOut = async () => {
     setSignOutLoading(true);
@@ -38,44 +46,28 @@ export default function Dashboard() {
   }
 
   // Render a loading state rather than showing dashboard elements briefly
-  if (!user) {
+  if (!user || isNewUser) {
     return null;
   }
 
   return (
-    <main className="min-h-screen p-8">
-      <div className="max-w-7xl mx-auto">
-        <div className="flex flex-col sm:flex-row justify-between items-center mb-8">
-          <h1 className="text-3xl font-bold">Dashboard</h1>
-          <div className="flex items-center gap-4 mt-4 sm:mt-0">
-            {user && (
-              <>
-                <div className="flex items-center gap-3">
-                  {user.photoURL && (
-                    <img 
-                      src={user.photoURL} 
-                      alt="Profile" 
-                      className="w-8 h-8 rounded-full"
-                    />
-                  )}
-                  <div className="text-sm">
-                    <p className="font-medium">{user.displayName || 'User'}</p>
-                    <p className="text-gray-600 text-xs">{user.email}</p>
-                  </div>
-                </div>
-                <button
-                  onClick={handleSignOut}
-                  disabled={signOutLoading}
-                  className="px-4 py-2 text-sm bg-gray-200 hover:bg-gray-300 rounded-lg transition-colors disabled:opacity-50 flex items-center gap-2"
-                >
-                  {signOutLoading && (
-                    <div className="animate-spin rounded-full h-4 w-4 border-t-2 border-b-2 border-gray-600"></div>
-                  )}
-                  Sign Out
-                </button>
-              </>
-            )}
-          </div>
+    <main className="min-h-screen p-4 md:p-8 bg-gray-50">
+      <div className="max-w-xl mx-auto">
+        <div className="flex flex-col items-center mb-6">
+          <h1 className="text-2xl md:text-3xl font-bold text-center">EasyVat</h1>
+          
+          {user && (
+            <div className="flex items-center mt-4 gap-2">
+              {user.photoURL && (
+                <img 
+                  src={user.photoURL} 
+                  alt="Profile" 
+                  className="w-8 h-8 rounded-full"
+                />
+              )}
+              <span className="text-sm font-medium">{user.displayName || user.email || 'User'}</span>
+            </div>
+          )}
         </div>
 
         {error && (
@@ -84,45 +76,50 @@ export default function Dashboard() {
           </div>
         )}
 
-        <div className="bg-white shadow rounded-lg p-6">
-          <h2 className="text-xl font-semibold mb-4">Your VAT Invoice Dashboard</h2>
-          <p className="text-gray-600 mb-6">
-            Welcome to EasyVat! Your platform for creating and managing VAT invoices with ease.
-          </p>
+        <div className="flex flex-col gap-4 mb-8">
+          <Link 
+            href="/create-invoice" 
+            className="flex items-center justify-center py-4 bg-blue-600 text-white font-medium rounded-xl hover:bg-blue-700 transition-colors shadow-md"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+            </svg>
+            Create Invoice
+          </Link>
           
-          <div className="flex flex-wrap gap-4">
-            <Link 
-              href="#" 
-              className="px-6 py-3 bg-blue-600 text-white font-medium rounded-lg hover:bg-blue-700 transition-colors"
-            >
-              Create New Invoice
-            </Link>
-            <Link 
-              href="#" 
-              className="px-6 py-3 border border-gray-300 text-gray-700 font-medium rounded-lg hover:bg-gray-50 transition-colors"
-            >
-              View All Invoices
-            </Link>
-          </div>
+          <Link 
+            href="/invoices" 
+            className="flex items-center justify-center py-4 bg-white text-gray-800 font-medium rounded-xl hover:bg-gray-50 transition-colors shadow-md border border-gray-200"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+            </svg>
+            View Invoices
+          </Link>
+          
+          <Link 
+            href="/settings" 
+            className="flex items-center justify-center py-4 bg-white text-gray-800 font-medium rounded-xl hover:bg-gray-50 transition-colors shadow-md border border-gray-200"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+            </svg>
+            Settings
+          </Link>
         </div>
-
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mt-8">
-          <div className="bg-white p-6 rounded-lg shadow">
-            <h3 className="font-medium text-lg mb-2">Recent Invoices</h3>
-            <p className="text-gray-600 text-sm">No invoices yet. Create your first invoice to get started.</p>
-          </div>
-          <div className="bg-white p-6 rounded-lg shadow">
-            <h3 className="font-medium text-lg mb-2">VAT Summary</h3>
-            <p className="text-gray-600 text-sm">Track your VAT payments and submissions here.</p>
-          </div>
-          <div className="bg-white p-6 rounded-lg shadow">
-            <h3 className="font-medium text-lg mb-2">Quick Actions</h3>
-            <ul className="text-sm text-gray-600">
-              <li className="mb-1">• Update your profile</li>
-              <li className="mb-1">• Configure invoice settings</li>
-              <li className="mb-1">• Export reports</li>
-            </ul>
-          </div>
+        
+        <div className="flex justify-center mt-auto">
+          <button
+            onClick={handleSignOut}
+            disabled={signOutLoading}
+            className="px-4 py-2 text-sm text-gray-600 hover:text-gray-800 transition-colors disabled:opacity-50 flex items-center gap-2"
+          >
+            {signOutLoading && (
+              <div className="animate-spin rounded-full h-4 w-4 border-t-2 border-b-2 border-gray-600"></div>
+            )}
+            Sign Out
+          </button>
         </div>
       </div>
     </main>

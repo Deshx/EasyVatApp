@@ -5,21 +5,25 @@ import {
   signInWithPopup, 
   GoogleAuthProvider, 
   signOut as firebaseSignOut,
-  getRedirectResult,
-  signInWithRedirect, 
   onAuthStateChanged,
   User 
 } from "firebase/auth";
 import { auth } from "../firebase/firebase";
+import { doc, getDoc, setDoc } from "firebase/firestore";
+import { db } from "../firebase/firebase";
+
+// Simple state enum for user profile status
+type ProfileStatus = "unknown" | "new" | "complete";
 
 interface AuthContextType {
   user: User | null;
   loading: boolean;
   error: string | null;
   signInWithGoogle: () => Promise<void>;
-  signInWithGoogleRedirect: () => Promise<void>;
   signOut: () => Promise<void>;
   clearError: () => void;
+  profileStatus: ProfileStatus;
+  refreshProfileStatus: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType>({
@@ -27,42 +31,66 @@ const AuthContext = createContext<AuthContextType>({
   loading: true,
   error: null,
   signInWithGoogle: async () => {},
-  signInWithGoogleRedirect: async () => {},
   signOut: async () => {},
   clearError: () => {},
+  profileStatus: "unknown",
+  refreshProfileStatus: async () => {},
 });
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [profileStatus, setProfileStatus] = useState<ProfileStatus>("unknown");
 
-  // Check for redirect result on component mount
-  useEffect(() => {
-    const checkRedirectResult = async () => {
-      try {
-        const result = await getRedirectResult(auth);
-        if (result) {
-          // This gives you a Google Access Token
-          const credential = GoogleAuthProvider.credentialFromResult(result);
-          // The signed-in user info
-          setUser(result.user);
-        }
-      } catch (error: any) {
-        setError(error.message || "Failed to complete Google sign-in redirect");
-        console.error("Redirect sign-in error:", error);
-      } finally {
-        setLoading(false);
+  // Check and update profile status
+  const checkProfileStatus = async (currentUser: User): Promise<ProfileStatus> => {
+    try {
+      const profileDoc = await getDoc(doc(db, "userProfiles", currentUser.uid));
+      
+      if (!profileDoc.exists()) {
+        // No profile exists at all
+        console.log("No profile exists for user");
+        return "new";
       }
-    };
+      
+      // Profile exists and is complete
+      console.log("User has a complete profile");
+      return "complete";
+    } catch (err) {
+      console.error("Error checking profile status:", err);
+      // Default to new user on error, to be safe
+      return "new";
+    }
+  };
 
-    checkRedirectResult();
-  }, []);
+  // Refresh profile status manually (useful after form submission)
+  const refreshProfileStatus = async () => {
+    if (!user) return;
+    
+    setLoading(true);
+    try {
+      const status = await checkProfileStatus(user);
+      setProfileStatus(status);
+    } catch (err) {
+      console.error("Error refreshing profile status:", err);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   // Listen for auth state changes
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
+    const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
       setUser(currentUser);
+      
+      if (currentUser) {
+        const status = await checkProfileStatus(currentUser);
+        setProfileStatus(status);
+      } else {
+        setProfileStatus("unknown");
+      }
+      
       setLoading(false);
     });
 
@@ -74,10 +102,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setError(null);
     const provider = new GoogleAuthProvider();
     
-    // Optional: Add scopes if needed
-    // provider.addScope('https://www.googleapis.com/auth/contacts.readonly');
-    
-    // Optional: Set custom parameters
     provider.setCustomParameters({
       prompt: 'select_account'
     });
@@ -85,35 +109,21 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     try {
       console.log("Attempting to sign in with Google...");
       const result = await signInWithPopup(auth, provider);
-      console.log("Sign in successful");
-      // This gives you a Google Access Token
-      const credential = GoogleAuthProvider.credentialFromResult(result);
-      // The signed-in user info
       setUser(result.user);
-    } catch (error: any) {
-      // More detailed error logging
-      console.error("Error signing in with Google:", error);
-      console.error("Error code:", error.code);
-      console.error("Error message:", error.message);
-      if (error.customData) {
-        console.error("Custom data:", error.customData);
-      }
-      if (error.email) {
-        console.error("Email:", error.email);
-      }
       
-      // Handle Errors here
+      // Check profile status after sign-in
+      const status = await checkProfileStatus(result.user);
+      setProfileStatus(status);
+    } catch (error: any) {
+      console.error("Error signing in with Google:", error);
+      
+      // Handle Errors
       let errorMessage = "Failed to sign in with Google";
       
-      // More specific error messages based on common error codes
       if (error.code === 'auth/popup-closed-by-user') {
         errorMessage = "Sign-in popup was closed before completing the sign-in.";
       } else if (error.code === 'auth/popup-blocked') {
         errorMessage = "The sign-in popup was blocked by your browser. Please allow popups for this website.";
-      } else if (error.code === 'auth/cancelled-popup-request') {
-        errorMessage = "The sign-in was cancelled.";
-      } else if (error.code === 'auth/network-request-failed') {
-        errorMessage = "Network error. Please check your internet connection.";
       } else if (error.message) {
         errorMessage = error.message;
       }
@@ -124,38 +134,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
-  const signInWithGoogleRedirect = async () => {
-    setError(null);
-    const provider = new GoogleAuthProvider();
-    
-    // Optional: Add scopes if needed
-    // provider.addScope('https://www.googleapis.com/auth/contacts.readonly');
-    
-    // Optional: Set custom parameters
-    provider.setCustomParameters({
-      prompt: 'select_account'
-    });
-
-    try {
-      // Redirects to Google sign-in page
-      await signInWithRedirect(auth, provider);
-      // The result will be handled in the useEffect hook on page load
-    } catch (error: any) {
-      const errorMessage = error.message || "Failed to redirect to Google sign-in";
-      setError(errorMessage);
-      console.error("Error redirecting to Google sign-in", error);
-      setLoading(false);
-    }
-  };
-
   const signOutUser = async () => {
     setError(null);
     try {
       await firebaseSignOut(auth);
+      setProfileStatus("unknown");
     } catch (error: any) {
       const errorMessage = error.message || "Failed to sign out";
       setError(errorMessage);
-      console.error("Error signing out", error);
     }
   };
 
@@ -169,10 +155,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         user, 
         loading, 
         error,
-        signInWithGoogle, 
-        signInWithGoogleRedirect,
+        signInWithGoogle,
         signOut: signOutUser,
-        clearError
+        clearError,
+        profileStatus,
+        refreshProfileStatus
       }}
     >
       {children}

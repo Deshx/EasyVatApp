@@ -4,60 +4,34 @@ import { useAuth } from "@/lib/hooks/useAuth";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import Image from "next/image";
 
 export default function LoginPage() {
-  const { user, signInWithGoogle, signInWithGoogleRedirect, loading, error, clearError } = useAuth();
+  const { user, signInWithGoogle, loading, error, clearError, profileStatus } = useAuth();
   const router = useRouter();
-  const [isRedirectPreferred, setIsRedirectPreferred] = useState(false);
   const [authLoading, setAuthLoading] = useState(false);
-  const [popupBlocked, setPopupBlocked] = useState(false);
 
-  // Check if we're on a mobile device to prefer redirect flow
+  // Handle redirects based on auth state
   useEffect(() => {
-    const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
-    setIsRedirectPreferred(isMobile);
-  }, []);
-
-  // Monitor for popup blocking errors
-  useEffect(() => {
-    if (error && (error.includes("popup") || error.includes("Popup"))) {
-      setPopupBlocked(true);
+    if (loading) return;
+    
+    if (user) {
+      // User is logged in, check profile status
+      if (profileStatus === "new") {
+        // New users go to profile setup
+        router.push("/profile-setup");
+      } else if (profileStatus === "complete") {
+        // Existing users go to dashboard
+        router.push("/dashboard");
+      }
     }
-  }, [error]);
-
-  useEffect(() => {
-    // Redirect to dashboard if already logged in
-    if (!loading && user) {
-      router.push("/dashboard");
-    }
-  }, [user, loading, router]);
+  }, [user, loading, router, profileStatus]);
 
   const handleGoogleSignIn = async () => {
     setAuthLoading(true);
-    setPopupBlocked(false);
     try {
-      if (isRedirectPreferred || popupBlocked) {
-        console.log("Using redirect sign-in method");
-        await signInWithGoogleRedirect();
-      } else {
-        console.log("Using popup sign-in method");
-        await signInWithGoogle();
-      }
+      await signInWithGoogle();
     } catch (err) {
       console.error("Failed to initiate sign in:", err);
-    } finally {
-      setAuthLoading(false);
-    }
-  };
-
-  const forceRedirectSignIn = async () => {
-    setAuthLoading(true);
-    try {
-      console.log("Forcing redirect sign-in method");
-      await signInWithGoogleRedirect();
-    } catch (err) {
-      console.error("Failed to initiate redirect sign in:", err);
     } finally {
       setAuthLoading(false);
     }
@@ -86,20 +60,6 @@ export default function LoginPage() {
           </div>
         )}
 
-        {popupBlocked && (
-          <div className="bg-yellow-50 border border-yellow-400 text-yellow-700 px-4 py-3 rounded mb-4">
-            <p className="font-medium">Popup blocked</p>
-            <p className="text-sm">Your browser blocked the sign-in popup. Try the redirect method instead:</p>
-            <button
-              onClick={forceRedirectSignIn}
-              disabled={authLoading}
-              className="mt-2 w-full flex items-center justify-center gap-3 py-2 bg-yellow-100 border border-yellow-300 rounded-lg hover:bg-yellow-200"
-            >
-              Try Sign In with Redirect
-            </button>
-          </div>
-        )}
-
         <div className="space-y-4">
           <button
             onClick={handleGoogleSignIn}
@@ -118,11 +78,6 @@ export default function LoginPage() {
             )}
             Sign in with Google
           </button>
-          <p className="text-xs text-center text-gray-500">
-            {isRedirectPreferred ? 
-              "You'll be redirected to Google to sign in" : 
-              "A popup window will open for you to sign in with Google"}
-          </p>
         </div>
 
         <div className="mt-6 text-center">
