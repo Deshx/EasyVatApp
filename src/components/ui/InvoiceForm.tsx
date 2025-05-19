@@ -15,6 +15,8 @@ import {
 } from "firebase/firestore";
 import { db } from "@/lib/firebase/firebase";
 import { useRouter } from "next/navigation";
+import Camera from "./Camera";
+import ImagePreview from "./ImagePreview";
 
 interface Company {
   id: string;
@@ -43,6 +45,11 @@ export default function InvoiceForm() {
   const [registering, setRegistering] = useState(false);
   const [editing, setEditing] = useState(false);
   const [selectedCompanyId, setSelectedCompanyId] = useState<string | null>(null);
+  
+  // New states for camera and image capture
+  const [showCamera, setShowCamera] = useState(false);
+  const [capturedImage, setCapturedImage] = useState<string | null>(null);
+  const [showPreview, setShowPreview] = useState(false);
   
   const [formData, setFormData] = useState<InvoiceFormData>({
     companyName: "",
@@ -184,8 +191,15 @@ export default function InvoiceForm() {
     setEditing(true);
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleNext = () => {
+    console.log('Proceeding with invoice creation');
+    setShowPreview(false);
+    // If we want to add more steps, we could toggle other state variables here
+    // For now, just trigger the form submission
+    handleInvoiceCreation();
+  };
+
+  const handleInvoiceCreation = async () => {
     if (!user) return;
 
     try {
@@ -246,8 +260,8 @@ export default function InvoiceForm() {
         }
       }
       
-      // Create invoice
-      const invoiceRef = await addDoc(collection(db, "invoices"), {
+      // Create invoice with the captured image
+      const invoiceData: any = {
         userId: user.uid,
         companyId,
         companyName: formData.companyName.trim(),
@@ -256,7 +270,15 @@ export default function InvoiceForm() {
         invoiceDate: formData.invoiceDate,
         createdAt: serverTimestamp(),
         status: "draft" // Or "issued", depending on your workflow
-      });
+      };
+
+      // If we have a captured image, add it to the invoice data
+      if (capturedImage) {
+        invoiceData.hasImage = true;
+        invoiceData.imageSrc = capturedImage;
+      }
+      
+      const invoiceRef = await addDoc(collection(db, "invoices"), invoiceData);
       
       // Navigate to edit invoice page
       router.push(`/invoice/${invoiceRef.id}`);
@@ -269,6 +291,36 @@ export default function InvoiceForm() {
     }
   };
 
+  const handleCapture = (imageSrc: string) => {
+    console.log('Image captured, camera should be off now');
+    setCapturedImage(imageSrc);
+    setShowCamera(false);
+    setShowPreview(true);
+  };
+
+  const handleRetake = () => {
+    console.log('Retaking photo, opening camera again');
+    setCapturedImage(null);
+    setShowPreview(false);
+    setShowCamera(true);
+  };
+
+  const openCamera = () => {
+    console.log('Opening camera');
+    setShowCamera(true);
+  };
+
+  const closeCamera = () => {
+    console.log('Closing camera without capturing');
+    setShowCamera(false);
+  };
+  
+  // Define handleSubmit to open camera
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    openCamera();
+  };
+
   return (
     <div className="bg-white rounded-lg shadow-md p-6">
       {error && (
@@ -277,134 +329,140 @@ export default function InvoiceForm() {
         </div>
       )}
       
-      <form onSubmit={handleSubmit} className="space-y-6">
-        <div className="relative" ref={suggestionRef}>
-          <label htmlFor="companyVatNumber" className="block text-sm font-medium text-gray-700 mb-1">
-            VAT Number*
-          </label>
-          <input
-            type="text"
-            id="companyVatNumber"
-            name="companyVatNumber"
-            value={formData.companyVatNumber}
-            onChange={handleChange}
-            required
-            className="w-full rounded-lg border border-gray-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
-            placeholder="Enter VAT number"
-          />
-          
-          {vatNumberChecked && isNewCompany && !registering && (
-            <div className="mt-2">
-              <p className="text-yellow-600 text-sm">Company not registered</p>
-              <button
-                type="button"
-                onClick={registerCompany}
-                className="mt-1 text-sm text-blue-600 hover:text-blue-800 font-medium"
-              >
-                Register this company
-              </button>
-            </div>
-          )}
-          
-          {showSuggestions && (
-            <div className="absolute z-10 mt-1 w-full bg-white shadow-lg max-h-60 rounded-md py-1 text-base ring-1 ring-black ring-opacity-5 overflow-auto focus:outline-none sm:text-sm">
-              {suggestions.map((company) => (
-                <div
-                  key={company.id}
-                  onClick={() => selectCompany(company)}
-                  className="cursor-pointer px-4 py-2 hover:bg-gray-100"
-                >
-                  <span className="font-medium">{company.vatNumber}</span> - {company.name}
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-        
-        <div>
-          <div className="flex items-center justify-between mb-1">
-            <label htmlFor="companyName" className="block text-sm font-medium text-gray-700">
-              Company Name*
+      {showCamera && (
+        <Camera onCapture={handleCapture} onClose={closeCamera} />
+      )}
+      
+      {showPreview && capturedImage && (
+        <ImagePreview 
+          imageSrc={capturedImage} 
+          onRetake={handleRetake} 
+          onNext={handleNext} 
+        />
+      )}
+      
+      {!showPreview && !showCamera && (
+        <form onSubmit={handleSubmit} className="space-y-6">
+          <div className="relative" ref={suggestionRef}>
+            <label htmlFor="companyVatNumber" className="block text-sm font-medium text-gray-700 mb-1">
+              VAT Number*
             </label>
-            {vatNumberChecked && !isNewCompany && !registering && !editing && (
-              <button
-                type="button"
-                onClick={enableEditing}
-                className="text-xs text-blue-600 hover:text-blue-800"
-              >
-                Edit details
-              </button>
+            <input
+              type="text"
+              id="companyVatNumber"
+              name="companyVatNumber"
+              value={formData.companyVatNumber}
+              onChange={handleChange}
+              required
+              className="w-full rounded-lg border border-gray-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+              placeholder="Enter VAT number"
+            />
+            
+            {vatNumberChecked && isNewCompany && !registering && (
+              <div className="mt-2">
+                <p className="text-yellow-600 text-sm">Company not registered</p>
+                <button
+                  type="button"
+                  onClick={registerCompany}
+                  className="mt-1 text-sm text-blue-600 hover:text-blue-800 font-medium"
+                >
+                  Register this company
+                </button>
+              </div>
+            )}
+            
+            {showSuggestions && (
+              <div className="absolute z-10 mt-1 w-full bg-white shadow-lg max-h-60 rounded-md py-1 text-base ring-1 ring-black ring-opacity-5 overflow-auto focus:outline-none sm:text-sm">
+                {suggestions.map((company) => (
+                  <div
+                    key={company.id}
+                    onClick={() => selectCompany(company)}
+                    className="cursor-pointer px-4 py-2 hover:bg-gray-100"
+                  >
+                    <span className="font-medium">{company.vatNumber}</span> - {company.name}
+                  </div>
+                ))}
+              </div>
             )}
           </div>
-          <input
-            type="text"
-            id="companyName"
-            name="companyName"
-            value={formData.companyName}
-            onChange={handleChange}
-            required
-            disabled={!vatNumberChecked || (!isNewCompany && !registering && !editing)}
-            className={`w-full rounded-lg border ${
-              !vatNumberChecked || (!isNewCompany && !registering && !editing)
-                ? "bg-gray-100 text-gray-500"
-                : "bg-white"
-            } border-gray-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500`}
-            placeholder="Enter company name"
-          />
-        </div>
-        
-        <div>
-          <label htmlFor="companyAddress" className="block text-sm font-medium text-gray-700 mb-1">
-            Address*
-          </label>
-          <textarea
-            id="companyAddress"
-            name="companyAddress"
-            value={formData.companyAddress}
-            onChange={handleChange}
-            required
-            disabled={!vatNumberChecked || (!isNewCompany && !registering && !editing)}
-            rows={3}
-            className={`w-full rounded-lg border ${
-              !vatNumberChecked || (!isNewCompany && !registering && !editing)
-                ? "bg-gray-100 text-gray-500"
-                : "bg-white"
-            } border-gray-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500`}
-          />
-        </div>
-        
-        <div>
-          <label htmlFor="invoiceDate" className="block text-sm font-medium text-gray-700 mb-1">
-            Invoice Date*
-          </label>
-          <input
-            type="date"
-            id="invoiceDate"
-            name="invoiceDate"
-            value={formData.invoiceDate}
-            onChange={handleChange}
-            required
-            className="w-full rounded-lg border border-gray-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
-          />
-        </div>
-        
-        <div className="pt-4">
-          <button
-            type="submit"
-            disabled={loading || (isNewCompany && !registering && (formData.companyName === "" || formData.companyAddress === ""))}
-            className="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50"
-          >
-            {loading ? (
-              <>
-                <span className="animate-spin h-5 w-5 mr-3 border-t-2 border-b-2 border-white rounded-full"></span>
-                Creating...
-              </>
-            ) : (
-              "Create Invoice"
-            )}
-          </button>
-        </div>
-      </form>
+          
+          <div>
+            <div className="flex items-center justify-between mb-1">
+              <label htmlFor="companyName" className="block text-sm font-medium text-gray-700">
+                Company Name*
+              </label>
+              {vatNumberChecked && !isNewCompany && !registering && !editing && (
+                <button
+                  type="button"
+                  onClick={enableEditing}
+                  className="text-xs text-blue-600 hover:text-blue-800"
+                >
+                  Edit details
+                </button>
+              )}
+            </div>
+            <input
+              type="text"
+              id="companyName"
+              name="companyName"
+              value={formData.companyName}
+              onChange={handleChange}
+              required
+              disabled={!vatNumberChecked || (!isNewCompany && !registering && !editing)}
+              className={`w-full rounded-lg border ${
+                !vatNumberChecked || (!isNewCompany && !registering && !editing)
+                  ? "bg-gray-100 text-gray-500"
+                  : "bg-white"
+              } border-gray-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500`}
+              placeholder="Enter company name"
+            />
+          </div>
+          
+          <div>
+            <label htmlFor="companyAddress" className="block text-sm font-medium text-gray-700 mb-1">
+              Address*
+            </label>
+            <textarea
+              id="companyAddress"
+              name="companyAddress"
+              value={formData.companyAddress}
+              onChange={handleChange}
+              required
+              disabled={!vatNumberChecked || (!isNewCompany && !registering && !editing)}
+              rows={3}
+              className={`w-full rounded-lg border ${
+                !vatNumberChecked || (!isNewCompany && !registering && !editing)
+                  ? "bg-gray-100 text-gray-500"
+                  : "bg-white"
+              } border-gray-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500`}
+            />
+          </div>
+          
+          <div>
+            <label htmlFor="invoiceDate" className="block text-sm font-medium text-gray-700 mb-1">
+              Invoice Date*
+            </label>
+            <input
+              type="date"
+              id="invoiceDate"
+              name="invoiceDate"
+              value={formData.invoiceDate}
+              onChange={handleChange}
+              required
+              className="w-full rounded-lg border border-gray-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+            />
+          </div>
+          
+          <div className="pt-4">
+            <button
+              type="submit"
+              className="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50"
+            >
+              Create Invoice
+            </button>
+          </div>
+        </form>
+      )}
     </div>
   );
 } 
