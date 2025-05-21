@@ -6,9 +6,10 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { doc, getDoc } from "firebase/firestore";
 import { db } from "@/lib/firebase/firebase";
+import { FuelPricesDisplay } from "@/components/ui/FuelPricesDisplay";
 
 export default function Dashboard() {
-  const { user, loading, error, signOut, isNewUser } = useAuth();
+  const { user, loading, error, signOut, profileStatus, isSuperAdmin } = useAuth();
   const router = useRouter();
   const [signOutLoading, setSignOutLoading] = useState(false);
 
@@ -20,10 +21,10 @@ export default function Dashboard() {
     }
 
     // If user is flagged as new, redirect to profile setup
-    if (!loading && user && isNewUser) {
+    if (!loading && user && profileStatus === "new") {
       router.push("/profile-setup");
     }
-  }, [user, loading, router, isNewUser]);
+  }, [user, loading, router, profileStatus]);
 
   const handleSignOut = async () => {
     setSignOutLoading(true);
@@ -46,7 +47,7 @@ export default function Dashboard() {
   }
 
   // Render a loading state rather than showing dashboard elements briefly
-  if (!user || isNewUser) {
+  if (!user || profileStatus === "new") {
     return null;
   }
 
@@ -66,6 +67,11 @@ export default function Dashboard() {
                 />
               )}
               <span className="text-sm font-medium">{user.displayName || user.email || 'User'}</span>
+              {isSuperAdmin && (
+                <span className="bg-amber-100 text-amber-800 text-xs px-2 py-1 rounded-full">
+                  Super Admin
+                </span>
+              )}
             </div>
           )}
         </div>
@@ -76,7 +82,23 @@ export default function Dashboard() {
           </div>
         )}
 
+        <div className="mb-6">
+          <FuelPricesDisplay />
+        </div>
+
         <div className="flex flex-col gap-4 mb-8">
+          {isSuperAdmin && (
+            <Link 
+              href="/fuel-prices" 
+              className="flex items-center justify-center py-4 bg-green-600 text-white font-medium rounded-xl hover:bg-green-700 transition-colors shadow-md"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4" />
+              </svg>
+              Manage Fuel Prices
+            </Link>
+          )}
+          
           <Link 
             href="/create-invoice" 
             className="flex items-center justify-center py-4 bg-blue-600 text-white font-medium rounded-xl hover:bg-blue-700 transition-colors shadow-md"

@@ -5,7 +5,7 @@ export const runtime = "edge";
 
 export async function POST(req: Request) {
   try {
-    const { base64Image, prompt = "Extract the text in the image" } = await req.json();
+    const { base64Image, prompt } = await req.json();
     
     if (!base64Image) {
       return NextResponse.json(
@@ -27,13 +27,18 @@ export async function POST(req: Request) {
       apiKey,
     });
 
-    const response = await openai.chat.completions.create({
+    // Create the OpenAI payload
+    const openaiPayload = {
       model: "gpt-4.1-nano",
       messages: [
         {
+          role: "system",
+          content: "You are a receipt OCR system. Extract ONLY the raw text from the image. DO NOT add any commentary, formatting, code blocks, or phrases like 'The text on the receipt is'. Return ONLY the raw text content."
+        },
+        {
           role: "user",
           content: [
-            { type: "text", text: prompt },
+            { type: "text", text: prompt || "Extract all text from this image exactly as it appears." },
             {
               type: "image_url",
               image_url: {
@@ -45,7 +50,30 @@ export async function POST(req: Request) {
         },
       ],
       max_tokens: 2048,
+    };
+    
+    // Log the payload (without the base64 image for readability)
+    console.log("OpenAI API payload:", {
+      ...openaiPayload,
+      messages: [
+        openaiPayload.messages[0],
+        {
+          ...openaiPayload.messages[1],
+          content: [
+            openaiPayload.messages[1].content[0],
+            { 
+              type: "image_url", 
+              image_url: { 
+                url: base64Image.substring(0, 50) + "...[truncated]", 
+                detail: "high" 
+              } 
+            }
+          ]
+        }
+      ]
     });
+
+    const response = await openai.chat.completions.create(openaiPayload);
 
     const extractedText = response.choices[0].message.content;
     

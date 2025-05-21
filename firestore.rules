@@ -2,6 +2,11 @@ rules_version = '2';
 
 service cloud.firestore {
   match /databases/{database}/documents {
+    // Helper function to check if user is super admin
+    function isSuperAdmin() {
+      return request.auth != null && request.auth.token.email == "oceans.deshan@gmail.com";
+    }
+    
     // Allow users to read and write only their own profile
     match /userProfiles/{userId} {
       allow read, write: if request.auth != null && request.auth.uid == userId;
@@ -17,6 +22,12 @@ service cloud.firestore {
     match /companies/{companyId} {
       allow read, write: if request.auth != null && request.auth.uid == resource.data.userId;
       allow create: if request.auth != null && request.auth.uid == request.resource.data.userId;
+    }
+    
+    // Fuel prices - read by all authenticated users, write only by super admin
+    match /fuelPrices/{priceId} {
+      allow read: if request.auth != null;
+      allow write: if isSuperAdmin();
     }
     
     // Default deny all other access

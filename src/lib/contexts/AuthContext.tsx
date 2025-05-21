@@ -24,6 +24,7 @@ interface AuthContextType {
   clearError: () => void;
   profileStatus: ProfileStatus;
   refreshProfileStatus: () => Promise<void>;
+  isSuperAdmin: boolean;
 }
 
 const AuthContext = createContext<AuthContextType>({
@@ -35,6 +36,7 @@ const AuthContext = createContext<AuthContextType>({
   clearError: () => {},
   profileStatus: "unknown",
   refreshProfileStatus: async () => {},
+  isSuperAdmin: false,
 });
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
@@ -42,6 +44,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [profileStatus, setProfileStatus] = useState<ProfileStatus>("unknown");
+  const [isSuperAdmin, setIsSuperAdmin] = useState(false);
+
+  // Check if user is super admin
+  const checkSuperAdmin = (email: string | null) => {
+    return email === "oceans.deshan@gmail.com";
+  };
 
   // Check and update profile status
   const checkProfileStatus = async (currentUser: User): Promise<ProfileStatus> => {
@@ -85,10 +93,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setUser(currentUser);
       
       if (currentUser) {
+        // Check if user is super admin
+        setIsSuperAdmin(checkSuperAdmin(currentUser.email));
+        
         const status = await checkProfileStatus(currentUser);
         setProfileStatus(status);
       } else {
         setProfileStatus("unknown");
+        setIsSuperAdmin(false);
       }
       
       setLoading(false);
@@ -110,6 +122,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       console.log("Attempting to sign in with Google...");
       const result = await signInWithPopup(auth, provider);
       setUser(result.user);
+      
+      // Check if user is super admin
+      setIsSuperAdmin(checkSuperAdmin(result.user.email));
       
       // Check profile status after sign-in
       const status = await checkProfileStatus(result.user);
@@ -139,6 +154,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     try {
       await firebaseSignOut(auth);
       setProfileStatus("unknown");
+      setIsSuperAdmin(false);
     } catch (error: any) {
       const errorMessage = error.message || "Failed to sign out";
       setError(errorMessage);
@@ -159,7 +175,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         signOut: signOutUser,
         clearError,
         profileStatus,
-        refreshProfileStatus
+        refreshProfileStatus,
+        isSuperAdmin
       }}
     >
       {children}

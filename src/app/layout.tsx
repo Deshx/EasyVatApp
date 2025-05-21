@@ -2,6 +2,7 @@ import "./globals.css";
 import { Toaster } from "@/components/ui/toaster";
 import type { Metadata } from "next";
 import { AuthProvider } from "@/lib/contexts/AuthContext";
+import { FuelPricesProvider } from "@/lib/contexts/FuelPricesContext";
 import { DebugPanel } from "@/components/ui/DebugPanel";
 
 export const metadata: Metadata = {
@@ -18,8 +19,10 @@ export default function RootLayout({
     <html lang="en" suppressHydrationWarning>
       <body className="min-h-screen bg-background font-sans antialiased">
         <AuthProvider>
-          {children}
-          {process.env.NODE_ENV === 'development' && <DebugPanel />}
+          <FuelPricesProvider>
+            {children}
+            {process.env.NODE_ENV === 'development' && <DebugPanel />}
+          </FuelPricesProvider>
         </AuthProvider>
         <Toaster />
       </body>
