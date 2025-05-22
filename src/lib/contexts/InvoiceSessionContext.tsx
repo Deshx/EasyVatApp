@@ -10,6 +10,7 @@ export interface ExtractedBillData {
   volume: string;
   amount: string;
   fuelType?: string;
+  fuelTypeName?: string;
 }
 
 export interface BillData {
@@ -19,6 +20,7 @@ export interface BillData {
     volume: string;
     amount: string;
     fuelType?: string;
+    fuelTypeName?: string;
   };
 }
 
@@ -41,6 +43,7 @@ export function InvoiceSessionProvider({ children }: { children: ReactNode }) {
   const [currentIndex, setCurrentIndex] = useState<number>(0);
 
   const addBill = (bill: BillData) => {
+    console.log("Adding bill with fuel type name:", bill.extractedData.fuelTypeName);
     setSessionBills((prev) => [...prev, bill]);
   };
 

@@ -17,6 +17,7 @@ import { db } from "@/lib/firebase/firebase";
 import { useRouter } from "next/navigation";
 import Camera from "./Camera";
 import ImagePreview from "./ImagePreview";
+import InvoiceGenerator from "./InvoiceGenerator";
 import { useInvoiceSession, BillData } from "@/lib/contexts/InvoiceSessionContext";
 
 interface Company {
@@ -271,101 +272,7 @@ export default function InvoiceForm() {
     openCamera();
   };
 
-  const handleInvoiceCreation = async () => {
-    if (!user || sessionBills.length === 0) return;
-
-    try {
-      setLoading(true);
-      setError(null);
-      
-      // Try to find an existing company by VAT number
-      const vatNumber = formData.companyVatNumber.trim();
-      let companyId: string | null = null;
-      
-      if (vatNumber) {
-        if (selectedCompanyId && editing) {
-          // Update the existing company if we're editing
-          await updateDoc(doc(db, "companies", selectedCompanyId), {
-            name: formData.companyName.trim(),
-            address: formData.companyAddress.trim(),
-            updatedAt: serverTimestamp()
-          });
-          companyId = selectedCompanyId;
-        } else if (selectedCompanyId) {
-          // Use the selected company without updating
-          companyId = selectedCompanyId;
-        } else {
-          // Check if company already exists with this VAT number
-          const companyQuery = query(
-            collection(db, "companies"),
-            where("userId", "==", user.uid),
-            where("vatNumber", "==", vatNumber)
-          );
-          
-          const querySnapshot = await getDocs(companyQuery);
-          
-          if (querySnapshot.empty) {
-            // Add new company
-            const companyRef = await addDoc(collection(db, "companies"), {
-              name: formData.companyName.trim(),
-              address: formData.companyAddress.trim(),
-              vatNumber: vatNumber,
-              userId: user.uid,
-              createdAt: serverTimestamp()
-            });
-            
-            companyId = companyRef.id;
-          } else {
-            // Use existing company
-            companyId = querySnapshot.docs[0].id;
-            
-            // Update the form with the company data to ensure consistency if not editing
-            if (!editing) {
-              const companyData = querySnapshot.docs[0].data() as Company;
-              setFormData(prev => ({
-                ...prev,
-                companyName: companyData.name,
-                companyAddress: companyData.address
-              }));
-            }
-          }
-        }
-      }
-      
-      // Create invoice with the captured bills
-      const invoiceData: any = {
-        userId: user.uid,
-        companyId,
-        companyName: formData.companyName.trim(),
-        companyAddress: formData.companyAddress.trim(),
-        companyVatNumber: vatNumber,
-        invoiceDate: formData.invoiceDate,
-        createdAt: serverTimestamp(),
-        status: "draft", // Or "issued", depending on your workflow
-        bills: sessionBills.map(bill => ({
-          imageSrc: bill.imageSrc,
-          rate: bill.extractedData.rate,
-          volume: bill.extractedData.volume,
-          amount: bill.extractedData.amount,
-          fuelType: bill.extractedData.fuelType
-        }))
-      };
-      
-      const invoiceRef = await addDoc(collection(db, "invoices"), invoiceData);
-      
-      // Clear the session after successful creation
-      clearSession();
-      
-      // Navigate to edit invoice page
-      router.push(`/invoice/${invoiceRef.id}`);
-      
-    } catch (err) {
-      console.error("Error creating invoice:", err);
-      setError("Failed to create invoice. Please try again.");
-    } finally {
-      setLoading(false);
-    }
-  };
+  // This method has been replaced by the InvoiceGenerator component
 
   return (
     <div className="bg-white rounded-lg shadow-md p-6">
@@ -395,7 +302,7 @@ export default function InvoiceForm() {
       )}
       
       {!showPreview && !showCamera && (
-        <form onSubmit={handleSubmit} className="space-y-6">
+        <>
           {/* Show bills in the current session if any */}
           {sessionBills.length > 0 && (
             <div className="mb-6">
@@ -414,136 +321,152 @@ export default function InvoiceForm() {
             </div>
           )}
           
-          <div className="relative" ref={suggestionRef}>
-            <label htmlFor="companyVatNumber" className="block text-sm font-medium text-gray-700 mb-1">
-              VAT Number*
-            </label>
-            <input
-              type="text"
-              id="companyVatNumber"
-              name="companyVatNumber"
-              value={formData.companyVatNumber}
-              onChange={handleChange}
-              required
-              className="w-full rounded-lg border border-gray-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
-              placeholder="Enter VAT number"
-            />
-            
-            {vatNumberChecked && isNewCompany && !registering && (
-              <div className="mt-2">
-                <p className="text-yellow-600 text-sm">Company not registered</p>
-                <button
-                  type="button"
-                  onClick={registerCompany}
-                  className="mt-1 text-sm text-blue-600 hover:text-blue-800 font-medium"
-                >
-                  Register this company
-                </button>
-              </div>
-            )}
-            
-            {showSuggestions && (
-              <div className="absolute z-10 mt-1 w-full bg-white shadow-lg max-h-60 rounded-md py-1 text-base ring-1 ring-black ring-opacity-5 overflow-auto focus:outline-none sm:text-sm">
-                {suggestions.map((company) => (
-                  <div
-                    key={company.id}
-                    onClick={() => selectCompany(company)}
-                    className="cursor-pointer px-4 py-2 hover:bg-gray-100"
-                  >
-                    <span className="font-medium">{company.vatNumber}</span> - {company.name}
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-          
-          <div>
-            <div className="flex items-center justify-between mb-1">
-              <label htmlFor="companyName" className="block text-sm font-medium text-gray-700">
-                Company Name*
-              </label>
-              {vatNumberChecked && !isNewCompany && !registering && !editing && (
-                <button
-                  type="button"
-                  onClick={enableEditing}
-                  className="text-xs text-blue-600 hover:text-blue-800"
-                >
-                  Edit details
-                </button>
-              )}
-            </div>
-            <input
-              type="text"
-              id="companyName"
-              name="companyName"
-              value={formData.companyName}
-              onChange={handleChange}
-              required
-              disabled={!vatNumberChecked || (!isNewCompany && !registering && !editing)}
-              className={`w-full rounded-lg border ${
-                !vatNumberChecked || (!isNewCompany && !registering && !editing)
-                  ? "bg-gray-100 text-gray-500"
-                  : "bg-white"
-              } border-gray-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500`}
-              placeholder="Enter company name"
-            />
-          </div>
-          
-          <div>
-            <label htmlFor="companyAddress" className="block text-sm font-medium text-gray-700 mb-1">
-              Address*
-            </label>
-            <textarea
-              id="companyAddress"
-              name="companyAddress"
-              value={formData.companyAddress}
-              onChange={handleChange}
-              required
-              disabled={!vatNumberChecked || (!isNewCompany && !registering && !editing)}
-              rows={3}
-              className={`w-full rounded-lg border ${
-                !vatNumberChecked || (!isNewCompany && !registering && !editing)
-                  ? "bg-gray-100 text-gray-500"
-                  : "bg-white"
-              } border-gray-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500`}
-            />
-          </div>
-          
-          <div>
-            <label htmlFor="invoiceDate" className="block text-sm font-medium text-gray-700 mb-1">
-              Invoice Date*
-            </label>
-            <input
-              type="date"
-              id="invoiceDate"
-              name="invoiceDate"
-              value={formData.invoiceDate}
-              onChange={handleChange}
-              required
-              className="w-full rounded-lg border border-gray-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
-            />
-          </div>
-          
-          <div className="pt-4">
-            <button
-              type="submit"
-              className="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50"
-            >
-              {sessionBills.length > 0 ? "Scan Another Bill" : "Scan Bill"}
-            </button>
-            
-            {sessionBills.length > 0 && (
+          {sessionBills.length > 0 ? (
+            <div className="pt-4 space-y-4">
               <button
                 type="button"
-                onClick={handleInvoiceCreation}
-                className="mt-4 w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 disabled:opacity-50"
-                disabled={loading}
+                onClick={openCamera}
+                className="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50"
               >
-                Create Invoice with {sessionBills.length} {sessionBills.length === 1 ? 'Bill' : 'Bills'}
+                Scan Another Bill
               </button>
-            )}
-          </div>
-        </form>
+              
+              <InvoiceGenerator 
+                bills={sessionBills}
+                companyName={formData.companyName}
+                companyVatNumber={formData.companyVatNumber}
+                onSuccess={(invoiceId) => {
+                  // Clear the session after successful creation
+                  clearSession();
+                  // Navigate to invoice page
+                  router.push(`/invoice/${invoiceId}`);
+                }}
+                onError={(errorMsg) => setError(errorMsg)}
+              />
+            </div>
+          ) : (
+            <form onSubmit={handleSubmit} className="space-y-6">
+              <div className="relative" ref={suggestionRef}>
+                <label htmlFor="companyVatNumber" className="block text-sm font-medium text-gray-700 mb-1">
+                  VAT Number*
+                </label>
+                <input
+                  type="text"
+                  id="companyVatNumber"
+                  name="companyVatNumber"
+                  value={formData.companyVatNumber}
+                  onChange={handleChange}
+                  required
+                  className="w-full rounded-lg border border-gray-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  placeholder="Enter VAT number"
+                />
+                
+                {vatNumberChecked && isNewCompany && !registering && (
+                  <div className="mt-2">
+                    <p className="text-yellow-600 text-sm">Company not registered</p>
+                    <button
+                      type="button"
+                      onClick={registerCompany}
+                      className="mt-1 text-sm text-blue-600 hover:text-blue-800 font-medium"
+                    >
+                      Register this company
+                    </button>
+                  </div>
+                )}
+                
+                {showSuggestions && (
+                  <div className="absolute z-10 mt-1 w-full bg-white shadow-lg max-h-60 rounded-md py-1 text-base ring-1 ring-black ring-opacity-5 overflow-auto focus:outline-none sm:text-sm">
+                    {suggestions.map((company) => (
+                      <div
+                        key={company.id}
+                        onClick={() => selectCompany(company)}
+                        className="cursor-pointer px-4 py-2 hover:bg-gray-100"
+                      >
+                        <span className="font-medium">{company.vatNumber}</span> - {company.name}
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+              
+              <div>
+                <div className="flex items-center justify-between mb-1">
+                  <label htmlFor="companyName" className="block text-sm font-medium text-gray-700">
+                    Company Name*
+                  </label>
+                  {vatNumberChecked && !isNewCompany && !registering && !editing && (
+                    <button
+                      type="button"
+                      onClick={enableEditing}
+                      className="text-xs text-blue-600 hover:text-blue-800"
+                    >
+                      Edit details
+                    </button>
+                  )}
+                </div>
+                <input
+                  type="text"
+                  id="companyName"
+                  name="companyName"
+                  value={formData.companyName}
+                  onChange={handleChange}
+                  required
+                  disabled={!vatNumberChecked || (!isNewCompany && !registering && !editing)}
+                  className={`w-full rounded-lg border ${
+                    !vatNumberChecked || (!isNewCompany && !registering && !editing)
+                      ? "bg-gray-100 text-gray-500"
+                      : "bg-white"
+                  } border-gray-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500`}
+                  placeholder="Enter company name"
+                />
+              </div>
+              
+              <div>
+                <label htmlFor="companyAddress" className="block text-sm font-medium text-gray-700 mb-1">
+                  Address*
+                </label>
+                <textarea
+                  id="companyAddress"
+                  name="companyAddress"
+                  value={formData.companyAddress}
+                  onChange={handleChange}
+                  required
+                  disabled={!vatNumberChecked || (!isNewCompany && !registering && !editing)}
+                  rows={3}
+                  className={`w-full rounded-lg border ${
+                    !vatNumberChecked || (!isNewCompany && !registering && !editing)
+                      ? "bg-gray-100 text-gray-500"
+                      : "bg-white"
+                  } border-gray-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500`}
+                />
+              </div>
+              
+              <div>
+                <label htmlFor="invoiceDate" className="block text-sm font-medium text-gray-700 mb-1">
+                  Invoice Date*
+                </label>
+                <input
+                  type="date"
+                  id="invoiceDate"
+                  name="invoiceDate"
+                  value={formData.invoiceDate}
+                  onChange={handleChange}
+                  required
+                  className="w-full rounded-lg border border-gray-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+              </div>
+              
+              <div className="pt-4">
+                <button
+                  type="submit"
+                  className="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50"
+                >
+                  Scan Bill
+                </button>
+              </div>
+            </form>
+          )}
+        </>
       )}
     </div>
   );

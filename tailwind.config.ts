@@ -4,6 +4,9 @@ const config: Config = {
     darkMode: ["class"],
     content: ["./src/**/*.{js,ts,jsx,tsx,mdx}"],
   theme: {
+    screens: {
+      'print': {'raw': 'print'},
+    },
   	extend: {
   		backgroundImage: {
   			'gradient-radial': 'radial-gradient(var(--tw-gradient-stops))',

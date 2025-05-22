@@ -6,6 +6,15 @@ import { useRouter } from "next/navigation";
 import { doc, getDoc } from "firebase/firestore";
 import { db } from "@/lib/firebase/firebase";
 import Link from "next/link";
+import InvoicePreview from "@/components/ui/InvoicePreview";
+
+interface InvoiceItem {
+  fuelType: string;
+  fuelTypeName?: string;
+  quantityLitres: number;
+  marketRate: number;
+  amount: number;
+}
 
 interface InvoiceData {
   id: string;
@@ -15,6 +24,17 @@ interface InvoiceData {
   invoiceDate: string;
   status: string;
   userId: string;
+  items: InvoiceItem[];
+  subTotal: number;
+  vat18: number;
+  total: number;
+  userProfile: {
+    companyName: string;
+    address: string;
+    phone: string;
+    email: string;
+    vatNumber: string;
+  };
   createdAt: {
     toDate: () => Date;
   };
@@ -101,11 +121,15 @@ export default function InvoicePage({ params }: { params: { id: string } }) {
     return null;
   }
 
+  const handlePrintInvoice = () => {
+    window.print();
+  };
+  
   return (
     <main className="min-h-screen p-4 md:p-8 bg-gray-50">
-      <div className="max-w-4xl mx-auto">
-        <div className="flex justify-between items-center mb-6">
-          <h1 className="text-2xl md:text-3xl font-bold">Invoice Details</h1>
+      <div className="max-w-4xl mx-auto print:max-w-full">
+        <div className="flex justify-between items-center mb-6 print:hidden">
+          <h1 className="text-2xl md:text-3xl font-bold">Invoice</h1>
           <div className="space-x-2">
             <Link 
               href="/dashboard" 
@@ -116,27 +140,22 @@ export default function InvoicePage({ params }: { params: { id: string } }) {
           </div>
         </div>
         
-        <div className="bg-white rounded-lg shadow-md p-6 mb-6">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div>
-              <h2 className="text-lg font-medium mb-2">Invoice Information</h2>
-              <p className="text-gray-500 text-sm mb-1">Status: <span className="font-medium text-blue-600 capitalize">{invoice.status}</span></p>
-              <p className="text-gray-500 text-sm">Date: <span className="font-medium">{new Date(invoice.invoiceDate).toLocaleDateString()}</span></p>
-            </div>
-            
-            <div>
-              <h2 className="text-lg font-medium mb-2">Client Information</h2>
-              <p className="font-medium">{invoice.companyName}</p>
-              <p className="text-sm text-gray-600 whitespace-pre-line">{invoice.companyAddress}</p>
-              <p className="text-sm text-gray-600 mt-1">VAT: {invoice.companyVatNumber}</p>
-            </div>
-          </div>
-        </div>
-        
-        <div className="bg-white rounded-lg shadow-md p-6">
-          <h2 className="text-lg font-medium mb-4">Invoice Items</h2>
-          <p className="text-gray-500 italic">This is a placeholder for invoice items. The invoice edit functionality will be implemented in a future update.</p>
-        </div>
+        <InvoicePreview
+          invoiceId={invoice.id}
+          invoiceDate={invoice.invoiceDate}
+          companyName={invoice.companyName}
+          companyVatNumber={invoice.companyVatNumber}
+          stationName={invoice.userProfile.companyName}
+          stationAddress={invoice.userProfile.address}
+          stationPhone={invoice.userProfile.phone}
+          stationEmail={invoice.userProfile.email}
+          stationVatNumber={invoice.userProfile.vatNumber}
+          items={invoice.items}
+          subTotal={invoice.subTotal}
+          vat18={invoice.vat18}
+          total={invoice.total}
+          onPrint={handlePrintInvoice}
+        />
       </div>
     </main>
   );

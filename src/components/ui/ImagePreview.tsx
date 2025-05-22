@@ -13,6 +13,7 @@ interface ExtractedData {
   volume: string;
   amount: string;
   fuelType?: string;
+  fuelTypeName?: string;
 }
 
 export default function ImagePreview({ imageSrc, onRetake, onNext, onComplete }: ImagePreviewProps) {
@@ -69,6 +70,11 @@ export default function ImagePreview({ imageSrc, onRetake, onNext, onComplete }:
           const detectedFuelType = getFuelTypeByRate(data.rate);
           if (detectedFuelType) {
             extractedData.fuelType = detectedFuelType;
+            // Add the fuel type name if found
+            const fuelType = fuelPrices.find(f => f.id === detectedFuelType);
+            if (fuelType) {
+              extractedData.fuelTypeName = `${fuelType.name} (Rs. ${fuelType.price}/L)`;
+            }
           }
           
           console.log("Final extracted data:", extractedData);
@@ -91,6 +97,11 @@ export default function ImagePreview({ imageSrc, onRetake, onNext, onComplete }:
         const detectedFuelType = getFuelTypeByRate(fallbackData.rate);
         if (detectedFuelType) {
           fallbackData.fuelType = detectedFuelType;
+          // Add the fuel type name if found
+          const fuelType = fuelPrices.find(f => f.id === detectedFuelType);
+          if (fuelType) {
+            fallbackData.fuelTypeName = `${fuelType.name} (Rs. ${fuelType.price}/L)`;
+          }
         }
         
         setExtractedData(fallbackData);
@@ -107,7 +118,7 @@ export default function ImagePreview({ imageSrc, onRetake, onNext, onComplete }:
     return () => {
       processingRef.current = false;
     };
-  }, [imageSrc, getFuelTypeByRate]);
+  }, [imageSrc, getFuelTypeByRate, fuelPrices]);
 
   // Handle field changes
   const handleFieldChange = (field: keyof ExtractedData, value: string) => {
@@ -139,9 +150,11 @@ export default function ImagePreview({ imageSrc, onRetake, onNext, onComplete }:
     if (field === 'rate' && !errorMessage) {
       const detectedFuelType = getFuelTypeByRate(value);
       if (detectedFuelType) {
+        const fuelType = fuelPrices.find(f => f.id === detectedFuelType);
         setExtractedData(prev => prev ? {
           ...prev,
-          fuelType: detectedFuelType
+          fuelType: detectedFuelType,
+          fuelTypeName: fuelType ? `${fuelType.name} (Rs. ${fuelType.price}/L)` : undefined
         } : null);
       }
     }
@@ -151,9 +164,13 @@ export default function ImagePreview({ imageSrc, onRetake, onNext, onComplete }:
   const handleFuelTypeChange = (fuelTypeId: string) => {
     if (!extractedData) return;
     
+    // Find the selected fuel type to get its name
+    const selectedFuel = fuelPrices.find(fuel => fuel.id === fuelTypeId);
+    
     setExtractedData({
       ...extractedData,
-      fuelType: fuelTypeId
+      fuelType: fuelTypeId,
+      fuelTypeName: selectedFuel ? `${selectedFuel.name} (Rs. ${selectedFuel.price}/L)` : undefined
     });
   };
 
@@ -181,6 +198,7 @@ export default function ImagePreview({ imageSrc, onRetake, onNext, onComplete }:
     
     // If no errors, proceed
     if (Object.keys(errors).length === 0) {
+      console.log("Passing extracted data with fuel type name:", extractedData);
       onNext(extractedData);
     }
   };
@@ -208,6 +226,7 @@ export default function ImagePreview({ imageSrc, onRetake, onNext, onComplete }:
     
     // If no errors, proceed
     if (Object.keys(errors).length === 0 && onComplete) {
+      console.log("Completing with extracted data including fuel type name:", extractedData);
       onComplete(extractedData);
     }
   };
