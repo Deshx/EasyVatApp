@@ -120,113 +120,122 @@ export default function ImagePreview({ imageSrc, onRetake, onNext, onComplete }:
     };
   }, [imageSrc, getFuelTypeByRate, fuelPrices]);
 
-  // Handle field changes
+  const validateField = (field: string, value: string): string | null => {
+    if (!value.trim()) {
+      return "This field is required";
+    }
+    
+    // Number validation
+    const numValue = parseFloat(value);
+    if (isNaN(numValue)) {
+      return "Must be a valid number";
+    }
+    
+    if (numValue <= 0) {
+      return "Value must be greater than zero";
+    }
+    
+    // Additional field-specific validations
+    switch(field) {
+      case 'rate':
+        if (numValue > 10000) {
+          return "Rate seems too high";
+        }
+        break;
+      case 'volume':
+        if (numValue > 1000) {
+          return "Volume seems too high";
+        }
+        break;
+      case 'amount':
+        if (numValue > 1000000) {
+          return "Amount seems too high";
+        }
+        break;
+    }
+    
+    return null;
+  };
+
   const handleFieldChange = (field: keyof ExtractedData, value: string) => {
     if (!extractedData) return;
     
-    // Validate input
-    let errorMessage = '';
-    
-    if (field === 'rate' || field === 'volume' || field === 'amount') {
-      // Must be a number
-      if (value && isNaN(parseFloat(value))) {
-        errorMessage = 'Must be a valid number';
-      }
-    }
+    // Validate the field
+    const error = validateField(field, value);
     
     // Update field errors
     setFieldErrors(prev => ({
       ...prev,
-      [field]: errorMessage
+      [field]: error || ''
     }));
     
-    // Update extracted data
+    // Update the data
     setExtractedData({
       ...extractedData,
       [field]: value
     });
-    
-    // If rate is changed, detect fuel type
-    if (field === 'rate' && !errorMessage) {
-      const detectedFuelType = getFuelTypeByRate(value);
-      if (detectedFuelType) {
-        const fuelType = fuelPrices.find(f => f.id === detectedFuelType);
-        setExtractedData(prev => prev ? {
-          ...prev,
-          fuelType: detectedFuelType,
-          fuelTypeName: fuelType ? `${fuelType.name} (Rs. ${fuelType.price}/L)` : undefined
-        } : null);
-      }
-    }
   };
 
-  // Function to handle fuel type change
   const handleFuelTypeChange = (fuelTypeId: string) => {
     if (!extractedData) return;
     
-    // Find the selected fuel type to get its name
-    const selectedFuel = fuelPrices.find(fuel => fuel.id === fuelTypeId);
+    const selectedFuelType = fuelPrices.find(f => f.id === fuelTypeId);
     
-    setExtractedData({
-      ...extractedData,
-      fuelType: fuelTypeId,
-      fuelTypeName: selectedFuel ? `${selectedFuel.name} (Rs. ${selectedFuel.price}/L)` : undefined
-    });
+    if (selectedFuelType) {
+      setExtractedData({
+        ...extractedData,
+        fuelType: fuelTypeId,
+        fuelTypeName: `${selectedFuelType.name} (Rs. ${selectedFuelType.price}/L)`
+      });
+    }
   };
 
-  // Handle "Next" button click with validation
   const handleNext = () => {
     if (!extractedData) return;
     
     // Validate all fields
     const errors: {[key: string]: string} = {};
+    let hasErrors = false;
     
-    ['rate', 'volume', 'amount'].forEach((field) => {
-      const value = extractedData[field as keyof ExtractedData];
-      if (!value) {
-        errors[field] = 'This field is required';
-      } else if (isNaN(parseFloat(value as string))) {
-        errors[field] = 'Must be a valid number';
+    Object.entries(extractedData).forEach(([field, value]) => {
+      if (field === 'fuelType' || field === 'fuelTypeName') return; // Skip optional fields
+      
+      const fieldError = validateField(field, value as string);
+      if (fieldError) {
+        errors[field] = fieldError;
+        hasErrors = true;
       }
     });
     
-    if (!extractedData.fuelType) {
-      errors.fuelType = 'Please select a fuel type';
-    }
-    
+    // Update errors and proceed if valid
     setFieldErrors(errors);
     
-    // If no errors, proceed
-    if (Object.keys(errors).length === 0) {
-      console.log("Passing extracted data with fuel type name:", extractedData);
+    if (!hasErrors) {
       onNext(extractedData);
     }
   };
 
   const handleComplete = () => {
-    if (!extractedData) return;
+    if (!extractedData || !onComplete) return;
     
     // Validate all fields
     const errors: {[key: string]: string} = {};
+    let hasErrors = false;
     
-    ['rate', 'volume', 'amount'].forEach((field) => {
-      const value = extractedData[field as keyof ExtractedData];
-      if (!value) {
-        errors[field] = 'This field is required';
-      } else if (isNaN(parseFloat(value as string))) {
-        errors[field] = 'Must be a valid number';
+    Object.entries(extractedData).forEach(([field, value]) => {
+      if (field === 'fuelType' || field === 'fuelTypeName') return; // Skip optional fields
+      
+      const fieldError = validateField(field, value as string);
+      if (fieldError) {
+        errors[field] = fieldError;
+        hasErrors = true;
       }
     });
     
-    if (!extractedData.fuelType) {
-      errors.fuelType = 'Please select a fuel type';
-    }
-    
+    // Update errors and proceed if valid
     setFieldErrors(errors);
     
-    // If no errors, proceed
-    if (Object.keys(errors).length === 0 && onComplete) {
-      console.log("Completing with extracted data including fuel type name:", extractedData);
+    if (!hasErrors) {
       onComplete(extractedData);
     }
   };
@@ -236,13 +245,13 @@ export default function ImagePreview({ imageSrc, onRetake, onNext, onComplete }:
       <div className="p-4 flex-grow flex flex-col">
         <h2 className="text-xl font-semibold mb-4">Review Bill</h2>
         
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 flex-grow">
-          {/* Image preview on left */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 flex-grow">
+          {/* Image preview */}
           <div className="bg-gray-100 rounded-lg overflow-hidden flex items-center justify-center relative">
             <img 
               src={imageSrc} 
               alt="Captured bill" 
-              className="max-w-full max-h-[300px] md:max-h-[400px] object-contain" 
+              className="max-w-full max-h-[300px] md:max-h-[500px] object-contain" 
             />
             
             {/* Scanning animation overlay */}
@@ -265,129 +274,133 @@ export default function ImagePreview({ imageSrc, onRetake, onNext, onComplete }:
             )}
           </div>
           
-          {/* Extracted text on right */}
-          <div className="border border-gray-200 rounded-lg p-4 flex flex-col">
-            <h3 className="text-lg font-medium mb-2">Extracted Data</h3>
-            
-            <div className="flex-grow overflow-hidden">
-              {loading || fuelPricesLoading ? (
-                <div className="flex items-center justify-center h-full">
-                  <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-blue-500"></div>
-                  <span className="ml-2">Processing...</span>
+          {/* Extracted data form */}
+          <div className="bg-white rounded-lg flex flex-col">
+            {loading ? (
+              <div className="flex flex-col items-center justify-center h-full">
+                <div className="text-gray-500 text-center">
+                  <p className="mb-2">Processing receipt...</p>
+                  <p className="text-sm">This may take a few seconds</p>
                 </div>
-              ) : error ? (
-                <div className="bg-red-50 border border-red-400 text-red-700 p-3 rounded-lg">
-                  {error}
+              </div>
+            ) : error ? (
+              <div className="flex flex-col items-center justify-center h-full">
+                <div className="text-red-500 text-center mb-4">
+                  <p>{error}</p>
                 </div>
-              ) : extractedData ? (
-                <div className="space-y-4">
-                  <div className="bg-gray-50 p-4 rounded-lg">
-                    <div className="space-y-3">
-                      {/* Rate field */}
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">
-                          Rate (Rs/L):
-                        </label>
-                        <input
-                          type="text"
-                          value={extractedData.rate}
-                          onChange={(e) => handleFieldChange('rate', e.target.value)}
-                          className={`w-full p-2 border rounded-md ${fieldErrors.rate ? 'border-red-500' : 'border-gray-300'}`}
-                        />
-                        {fieldErrors.rate && (
-                          <p className="mt-1 text-sm text-red-600">{fieldErrors.rate}</p>
-                        )}
-                      </div>
-                      
-                      {/* Volume field */}
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">
-                          Volume (L):
-                        </label>
-                        <input
-                          type="text"
-                          value={extractedData.volume}
-                          onChange={(e) => handleFieldChange('volume', e.target.value)}
-                          className={`w-full p-2 border rounded-md ${fieldErrors.volume ? 'border-red-500' : 'border-gray-300'}`}
-                        />
-                        {fieldErrors.volume && (
-                          <p className="mt-1 text-sm text-red-600">{fieldErrors.volume}</p>
-                        )}
-                      </div>
-                      
-                      {/* Amount field */}
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">
-                          Amount (Rs):
-                        </label>
-                        <input
-                          type="text"
-                          value={extractedData.amount}
-                          onChange={(e) => handleFieldChange('amount', e.target.value)}
-                          className={`w-full p-2 border rounded-md ${fieldErrors.amount ? 'border-red-500' : 'border-gray-300'}`}
-                        />
-                        {fieldErrors.amount && (
-                          <p className="mt-1 text-sm text-red-600">{fieldErrors.amount}</p>
-                        )}
-                      </div>
-                      
-                      {/* Fuel Type dropdown */}
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">
-                          Fuel Type:
-                        </label>
-                        <select
-                          value={extractedData.fuelType || ''}
-                          onChange={(e) => handleFuelTypeChange(e.target.value)}
-                          className={`w-full p-2 border rounded-md ${fieldErrors.fuelType ? 'border-red-500' : 'border-gray-300'}`}
-                        >
-                          <option value="">Select Fuel Type</option>
-                          {fuelPrices.map((fuel) => (
-                            <option key={fuel.id} value={fuel.id}>
-                              {fuel.name} (Rs. {fuel.price}/L)
-                            </option>
-                          ))}
-                        </select>
-                        {fieldErrors.fuelType && (
-                          <p className="mt-1 text-sm text-red-600">{fieldErrors.fuelType}</p>
-                        )}
-                      </div>
+                <button
+                  onClick={onRetake}
+                  className="px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600"
+                >
+                  Retake Photo
+                </button>
+              </div>
+            ) : extractedData ? (
+              <div className="h-full flex flex-col">
+                <div className="flex-grow overflow-y-auto">
+                  <div className="space-y-4">
+                    {/* Rate field */}
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        Rate (Rs/L):
+                      </label>
+                      <input
+                        type="text"
+                        value={extractedData.rate}
+                        onChange={(e) => handleFieldChange('rate', e.target.value)}
+                        className={`w-full p-2 border rounded-md ${fieldErrors.rate ? 'border-red-500' : 'border-gray-300'}`}
+                      />
+                      {fieldErrors.rate && (
+                        <p className="mt-1 text-sm text-red-600">{fieldErrors.rate}</p>
+                      )}
+                    </div>
+                    
+                    {/* Volume field */}
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        Volume (L):
+                      </label>
+                      <input
+                        type="text"
+                        value={extractedData.volume}
+                        onChange={(e) => handleFieldChange('volume', e.target.value)}
+                        className={`w-full p-2 border rounded-md ${fieldErrors.volume ? 'border-red-500' : 'border-gray-300'}`}
+                      />
+                      {fieldErrors.volume && (
+                        <p className="mt-1 text-sm text-red-600">{fieldErrors.volume}</p>
+                      )}
+                    </div>
+                    
+                    {/* Amount field */}
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        Amount (Rs):
+                      </label>
+                      <input
+                        type="text"
+                        value={extractedData.amount}
+                        onChange={(e) => handleFieldChange('amount', e.target.value)}
+                        className={`w-full p-2 border rounded-md ${fieldErrors.amount ? 'border-red-500' : 'border-gray-300'}`}
+                      />
+                      {fieldErrors.amount && (
+                        <p className="mt-1 text-sm text-red-600">{fieldErrors.amount}</p>
+                      )}
+                    </div>
+                    
+                    {/* Fuel type dropdown */}
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        Fuel Type:
+                      </label>
+                      <select
+                        value={extractedData.fuelType || ''}
+                        onChange={(e) => handleFuelTypeChange(e.target.value)}
+                        className="w-full p-2 border border-gray-300 rounded-md bg-white"
+                      >
+                        <option value="">Select Fuel Type</option>
+                        {fuelPrices.map((fuel) => (
+                          <option key={fuel.id} value={fuel.id}>
+                            {fuel.name} (Rs. {fuel.price}/L)
+                          </option>
+                        ))}
+                      </select>
                     </div>
                   </div>
                 </div>
-              ) : (
-                <div className="h-full overflow-y-auto whitespace-pre-wrap text-sm">
-                  {extractedText || "No text was extracted from the image."}
+                
+                <div className="mt-4 flex space-x-3 pt-2 border-t">
+                  <button
+                    onClick={onRetake}
+                    className="px-3 py-1.5 border border-gray-300 text-gray-700 rounded-md hover:bg-gray-50"
+                  >
+                    Retake
+                  </button>
+                  
+                  <div className="flex-grow"></div>
+                  
+                  {onComplete && (
+                    <button
+                      onClick={handleComplete}
+                      className="px-3 py-1.5 bg-green-600 text-white rounded-md hover:bg-green-700"
+                    >
+                      Complete
+                    </button>
+                  )}
+                  
+                  <button
+                    onClick={handleNext}
+                    className="px-3 py-1.5 bg-blue-600 text-white rounded-md hover:bg-blue-700"
+                  >
+                    Next Bill
+                  </button>
                 </div>
-              )}
-            </div>
+              </div>
+            ) : (
+              <div className="flex flex-col items-center justify-center h-full">
+                <p className="text-gray-500">No data extracted</p>
+              </div>
+            )}
           </div>
-        </div>
-        
-        {/* Action buttons */}
-        <div className="flex justify-between mt-6">
-          <button
-            onClick={onRetake}
-            className="px-6 py-3 bg-red-600 text-white rounded-lg hover:bg-red-700 focus:outline-none"
-          >
-            Retake
-          </button>
-          
-          <button
-            onClick={handleComplete}
-            className="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 focus:outline-none"
-            disabled={loading || fuelPricesLoading}
-          >
-            Complete
-          </button>
-          
-          <button
-            onClick={handleNext}
-            className="px-6 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 focus:outline-none"
-            disabled={loading || fuelPricesLoading}
-          >
-            Next
-          </button>
         </div>
       </div>
     </div>

@@ -1,6 +1,6 @@
 "use client";
 
-import { createContext, useContext, useState, ReactNode } from 'react';
+import { createContext, useContext, useState, ReactNode, useEffect } from 'react';
 
 // Define types for the extracted data
 export interface ExtractedBillData {
@@ -37,23 +37,76 @@ interface InvoiceSessionContextType {
 // Create context
 const InvoiceSessionContext = createContext<InvoiceSessionContextType | undefined>(undefined);
 
+// localStorage keys
+const STORAGE_KEY_BILLS = 'easyVat_sessionBills';
+const STORAGE_KEY_INDEX = 'easyVat_currentIndex';
+
 // Provider component
 export function InvoiceSessionProvider({ children }: { children: ReactNode }) {
   const [sessionBills, setSessionBills] = useState<BillData[]>([]);
   const [currentIndex, setCurrentIndex] = useState<number>(0);
 
+  // Load data from localStorage on component mount
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      try {
+        // Load session bills
+        const storedBills = localStorage.getItem(STORAGE_KEY_BILLS);
+        if (storedBills) {
+          setSessionBills(JSON.parse(storedBills));
+        }
+        
+        // Load current index
+        const storedIndex = localStorage.getItem(STORAGE_KEY_INDEX);
+        if (storedIndex) {
+          setCurrentIndex(parseInt(storedIndex, 10));
+        }
+      } catch (error) {
+        console.error('Error loading invoice session from localStorage:', error);
+      }
+    }
+  }, []);
+
   const addBill = (bill: BillData) => {
     console.log("Adding bill with fuel type name:", bill.extractedData.fuelTypeName);
-    setSessionBills((prev) => [...prev, bill]);
+    const updatedBills = [...sessionBills, bill];
+    setSessionBills(updatedBills);
+    
+    // Save to localStorage
+    if (typeof window !== 'undefined') {
+      localStorage.setItem(STORAGE_KEY_BILLS, JSON.stringify(updatedBills));
+    }
   };
 
   const removeBill = (index: number) => {
-    setSessionBills((prev) => prev.filter((_, i) => i !== index));
+    const updatedBills = sessionBills.filter((_, i) => i !== index);
+    setSessionBills(updatedBills);
+    
+    // Save to localStorage
+    if (typeof window !== 'undefined') {
+      localStorage.setItem(STORAGE_KEY_BILLS, JSON.stringify(updatedBills));
+    }
   };
 
   const clearSession = () => {
     setSessionBills([]);
     setCurrentIndex(0);
+    
+    // Clear from localStorage
+    if (typeof window !== 'undefined') {
+      localStorage.removeItem(STORAGE_KEY_BILLS);
+      localStorage.removeItem(STORAGE_KEY_INDEX);
+    }
+  };
+
+  // Update index in localStorage whenever it changes
+  const updateCurrentIndex = (index: number) => {
+    setCurrentIndex(index);
+    
+    // Save to localStorage
+    if (typeof window !== 'undefined') {
+      localStorage.setItem(STORAGE_KEY_INDEX, index.toString());
+    }
   };
 
   return (
@@ -64,7 +117,7 @@ export function InvoiceSessionProvider({ children }: { children: ReactNode }) {
         removeBill,
         clearSession,
         currentIndex,
-        setCurrentIndex
+        setCurrentIndex: updateCurrentIndex
       }}
     >
       {children}

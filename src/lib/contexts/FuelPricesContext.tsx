@@ -30,6 +30,9 @@ const FuelPricesContext = createContext<FuelPricesContextType>({
   getFuelTypeByRate: () => undefined,
 });
 
+// localStorage key
+const STORAGE_KEY_FUEL_PRICES = 'easyVat_fuelPrices';
+
 // Provider component to wrap around components that need fuel prices data
 export function FuelPricesProvider({ children }: { children: React.ReactNode }) {
   const [fuelPrices, setFuelPrices] = useState<FuelPrice[]>([]);
@@ -41,6 +44,18 @@ export function FuelPricesProvider({ children }: { children: React.ReactNode }) 
     setLoading(true);
     setError(null);
     try {
+      // Try to load from localStorage first
+      if (typeof window !== 'undefined') {
+        const cachedPrices = localStorage.getItem(STORAGE_KEY_FUEL_PRICES);
+        if (cachedPrices) {
+          const parsedPrices = JSON.parse(cachedPrices);
+          setFuelPrices(parsedPrices);
+          setLoading(false);
+          return;
+        }
+      }
+      
+      // If not in localStorage, fetch from Firestore
       const fuelPricesCollection = collection(db, "fuelPrices");
       const snapshot = await getDocs(fuelPricesCollection);
       
@@ -48,6 +63,11 @@ export function FuelPricesProvider({ children }: { children: React.ReactNode }) 
       snapshot.forEach(doc => {
         prices.push({ id: doc.id, ...doc.data() } as FuelPrice);
       });
+      
+      // Save to localStorage for offline use
+      if (typeof window !== 'undefined' && prices.length > 0) {
+        localStorage.setItem(STORAGE_KEY_FUEL_PRICES, JSON.stringify(prices));
+      }
       
       setFuelPrices(prices);
     } catch (err) {
@@ -58,44 +78,30 @@ export function FuelPricesProvider({ children }: { children: React.ReactNode }) 
     }
   };
 
-  // Function to get a fuel type based on the rate
+  // Function to get a fuel type ID based on its rate
   const getFuelTypeByRate = (rate: string): string | undefined => {
-    if (!rate || fuelPrices.length === 0) return undefined;
+    // Clean up rate for comparison (remove trailing zeros)
+    const cleanRate = parseFloat(rate).toString();
     
-    const parsedRate = parseFloat(rate);
-    
-    // Find the closest matching fuel price
-    let closestFuel: FuelPrice | undefined;
-    let smallestDifference = Number.MAX_VALUE;
-    
-    fuelPrices.forEach(fuel => {
-      const fuelPrice = parseFloat(fuel.price);
-      const difference = Math.abs(parsedRate - fuelPrice);
-      
-      if (difference < smallestDifference) {
-        smallestDifference = difference;
-        closestFuel = fuel;
+    for (const fuel of fuelPrices) {
+      if (fuel.price === rate || fuel.price === cleanRate) {
+        return fuel.id;
       }
-    });
-    
-    // If the difference is within a reasonable threshold (e.g., 5%)
-    if (closestFuel && smallestDifference / parseFloat(closestFuel.price) <= 0.05) {
-      return closestFuel.id;
     }
     
     return undefined;
   };
 
-  // Fetch fuel prices on initial load
+  // Initial fetch on component mount
   useEffect(() => {
     fetchFuelPrices();
   }, []);
 
   return (
-    <FuelPricesContext.Provider 
-      value={{ 
-        fuelPrices, 
-        loading, 
+    <FuelPricesContext.Provider
+      value={{
+        fuelPrices,
+        loading,
         error,
         refreshFuelPrices: fetchFuelPrices,
         getFuelTypeByRate
@@ -109,8 +115,8 @@ export function FuelPricesProvider({ children }: { children: React.ReactNode }) 
 // Custom hook to use the fuel prices context
 export function useFuelPrices() {
   const context = useContext(FuelPricesContext);
-  if (context === undefined) {
-    throw new Error('useFuelPrices must be used within a FuelPricesProvider');
+  if (!context) {
+    throw new Error("useFuelPrices must be used within a FuelPricesProvider");
   }
   return context;
 } 

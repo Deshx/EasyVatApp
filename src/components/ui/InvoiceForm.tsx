@@ -93,15 +93,6 @@ export default function InvoiceForm() {
         setShowSuggestions(false);
         setVatNumberChecked(false);
         setIsNewCompany(false);
-        setRegistering(false);
-        setEditing(false);
-        setSelectedCompanyId(null);
-        // Clear other fields if VAT number is cleared
-        setFormData(prev => ({
-          ...prev,
-          companyName: "",
-          companyAddress: ""
-        }));
       }
     }
   };
@@ -110,7 +101,9 @@ export default function InvoiceForm() {
     if (!user) return;
     
     try {
-      // First check for exact match
+      setLoading(true);
+      
+      // First check for exact match to auto-fill immediately
       const exactMatchQuery = query(
         collection(db, "companies"),
         where("userId", "==", user.uid),
@@ -157,16 +150,11 @@ export default function InvoiceForm() {
         setSuggestions([]);
         setShowSuggestions(false);
         setIsNewCompany(true);
-        setSelectedCompanyId(null);
-        // Clear company fields
-        setFormData(prev => ({
-          ...prev,
-          companyName: "",
-          companyAddress: ""
-        }));
       }
     } catch (err) {
       console.error("Error searching companies:", err);
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -236,10 +224,6 @@ export default function InvoiceForm() {
       setShowPreview(false);
     }
     
-    // Here we would process the completed session
-    // For now, just log the bills and reset
-    console.log('Session complete with bills:', sessionBills);
-    
     // Return to form view - don't clear the session until the user creates the invoice
     setShowCamera(false);
   };
@@ -271,8 +255,18 @@ export default function InvoiceForm() {
     e.preventDefault();
     openCamera();
   };
-
-  // This method has been replaced by the InvoiceGenerator component
+  
+  const handleInvoiceSuccess = (invoiceId: string) => {
+    // Clear the session after successful invoice creation
+    clearSession();
+    
+    // Redirect to the invoice view
+    router.push(`/invoice/${invoiceId}`);
+  };
+  
+  const handleInvoiceError = (errorMessage: string) => {
+    setError(errorMessage);
+  };
 
   return (
     <div className="bg-white rounded-lg shadow-md p-6">
@@ -318,33 +312,32 @@ export default function InvoiceForm() {
                   </div>
                 ))}
               </div>
+              
+              <div className="mt-4 flex space-x-4">
+                <button
+                  type="button"
+                  onClick={openCamera}
+                  className="px-4 py-2 border border-blue-500 text-blue-500 rounded-md hover:bg-blue-50 focus:outline-none"
+                >
+                  Scan Another Bill
+                </button>
+                
+                {/* Only show create invoice button if we have company details and bills */}
+                {vatNumberChecked && formData.companyName && sessionBills.length > 0 && (
+                  <InvoiceGenerator
+                    bills={sessionBills}
+                    companyName={formData.companyName}
+                    companyVatNumber={formData.companyVatNumber}
+                    onSuccess={handleInvoiceSuccess}
+                    onError={handleInvoiceError}
+                  />
+                )}
+              </div>
             </div>
           )}
           
-          {sessionBills.length > 0 ? (
-            <div className="pt-4 space-y-4">
-              <button
-                type="button"
-                onClick={openCamera}
-                className="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50"
-              >
-                Scan Another Bill
-              </button>
-              
-              <InvoiceGenerator 
-                bills={sessionBills}
-                companyName={formData.companyName}
-                companyVatNumber={formData.companyVatNumber}
-                onSuccess={(invoiceId) => {
-                  // Clear the session after successful creation
-                  clearSession();
-                  // Navigate to invoice page
-                  router.push(`/invoice/${invoiceId}`);
-                }}
-                onError={(errorMsg) => setError(errorMsg)}
-              />
-            </div>
-          ) : (
+          {/* Show form if no bills or if there are bills but still need company info */}
+          {(sessionBills.length === 0 || (sessionBills.length > 0 && (!vatNumberChecked || !formData.companyName))) && (
             <form onSubmit={handleSubmit} className="space-y-6">
               <div className="relative" ref={suggestionRef}>
                 <label htmlFor="companyVatNumber" className="block text-sm font-medium text-gray-700 mb-1">

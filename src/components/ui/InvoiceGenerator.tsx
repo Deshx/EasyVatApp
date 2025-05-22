@@ -52,6 +52,10 @@ interface FuelTypeInfo {
   name: string;
 }
 
+// localStorage keys
+const STORAGE_KEY_USER_PROFILE = 'easyVat_userProfile';
+const STORAGE_KEY_FUEL_TYPES = 'easyVat_fuelTypes';
+
 export default function InvoiceGenerator({ 
   bills, 
   companyName, 
@@ -61,82 +65,59 @@ export default function InvoiceGenerator({
 }: InvoiceGeneratorProps) {
   const { user } = useAuth();
   const router = useRouter();
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
   const [processing, setProcessing] = useState(false);
   const [fuelTypes, setFuelTypes] = useState<{[key: string]: string}>({});
   const { fuelPrices } = useFuelPrices();
+  const [showIntermediate, setShowIntermediate] = useState(false);
+  const [invoiceData, setInvoiceData] = useState<any>(null);
   
-  // Fetch user profile data and fuel types
+  // Load from localStorage on mount
   useEffect(() => {
-    const fetchData = async () => {
-      if (!user) return;
-      
+    if (typeof window !== 'undefined') {
       try {
-        setLoading(true);
-        
-        // Fetch user profile
-        const profileDoc = await getDoc(doc(db, "userProfiles", user.uid));
-        
-        if (profileDoc.exists()) {
-          setUserProfile(profileDoc.data() as UserProfile);
-        } else {
-          onError("User profile not found. Please complete your profile setup first.");
-          return;
+        // Try to load user profile from localStorage
+        const cachedProfile = localStorage.getItem(STORAGE_KEY_USER_PROFILE);
+        if (cachedProfile) {
+          setUserProfile(JSON.parse(cachedProfile));
         }
         
-        // Default fuel type mappings
-        const defaultFuelTypes: {[key: string]: string} = {
-          "petrol": "Petrol",
-          "diesel": "Diesel",
-          "super_diesel": "Super Diesel",
-          "kerosene": "Kerosene",
-          "gasoline": "Gasoline",
-          "octane_92": "Octane 92",
-          "octane_95": "Octane 95",
-          "LP95": "LP95",
-          "LP92": "LP92",
-          "LAD": "LAD",
-          "auto_diesel": "Auto Diesel",
-          "super_petrol": "Super Petrol"
-        };
-        
-        // Map fuel types
-        const fuelTypeMap: {[key: string]: string} = {
-          ...defaultFuelTypes
-        };
-        
-        // First add from fuel prices context
-        fuelPrices.forEach(fuel => {
-          if (fuel.id) {
-            fuelTypeMap[fuel.id] = fuel.name;
-          }
-        });
-        
-        // Then fetch any additional fuel types from Firestore
-        const fuelTypesSnapshot = await getDocs(collection(db, "fuelTypes"));
-        fuelTypesSnapshot.forEach(doc => {
-          fuelTypeMap[doc.id] = doc.data().name || doc.id;
-        });
-        
-        setFuelTypes(fuelTypeMap);
-      } catch (err) {
-        console.error("Error fetching data:", err);
-        onError("Failed to load necessary information.");
-      } finally {
-        setLoading(false);
+        // Try to load fuel types from localStorage
+        const cachedFuelTypes = localStorage.getItem(STORAGE_KEY_FUEL_TYPES);
+        if (cachedFuelTypes) {
+          setFuelTypes(JSON.parse(cachedFuelTypes));
+        } else {
+          // Default fuel type mappings if not in localStorage
+          setFuelTypes({
+            "petrol": "Petrol",
+            "diesel": "Diesel",
+            "super_diesel": "Super Diesel",
+            "kerosene": "Kerosene",
+            "gasoline": "Gasoline",
+            "octane_92": "Octane 92",
+            "octane_95": "Octane 95",
+            "LP95": "LP95",
+            "LP92": "LP92",
+            "LAD": "LAD",
+            "auto_diesel": "Auto Diesel",
+            "super_petrol": "Super Petrol"
+          });
+        }
+      } catch (error) {
+        console.error("Error loading from localStorage:", error);
       }
-    };
-
-    fetchData();
-  }, [user, onError, fuelPrices]);
-
-  const processInvoice = async () => {
-    if (!user || !userProfile || bills.length === 0) return;
-
+    }
+  }, []);
+  
+  // Function to show bill preview and calculations before saving
+  const handlePreview = () => {
+    if (bills.length === 0) {
+      onError("No bills to process");
+      return;
+    }
+    
     try {
-      setProcessing(true);
-      
       // Group bills by fuel type
       const fuelTypeGroups = groupBillsByFuelType(bills);
       
@@ -146,34 +127,156 @@ export default function InvoiceGenerator({
       // Calculate invoice totals
       const invoiceTotals = calculateInvoiceTotals(invoiceItems);
       
-      // Debug fuel types
-      console.log("Fuel Types Mapping:", fuelTypes);
-      console.log("Invoice Items with Names:", invoiceItems);
-      
-      // Create the invoice in Firestore
-      const invoiceData = {
-        userId: user.uid,
+      // Prepare invoice data
+      const newInvoiceData = {
+        userId: user?.uid || 'guest',
         companyName,
         companyVatNumber,
         invoiceDate: new Date().toISOString().split('T')[0],
-        createdAt: serverTimestamp(),
-        status: "issued",
-        items: invoiceItems.map(item => ({
-          fuelType: item.fuelType,
-          fuelTypeName: item.fuelTypeName,
-          quantityLitres: item.quantityLitres,
-          marketRate: item.marketRate,
-          amount: item.amount
-        })),
+        items: invoiceItems,
         subTotal: invoiceTotals.subTotal,
         vat18: invoiceTotals.vat18,
         total: invoiceTotals.total,
+        // We'll add userProfile data when we actually submit
+      };
+      
+      setInvoiceData(newInvoiceData);
+      setShowIntermediate(true);
+    } catch (err) {
+      console.error("Error generating invoice preview:", err);
+      onError("Failed to generate invoice preview. Please try again.");
+    }
+  };
+  
+  // Function to fetch user profile from Firebase
+  const fetchUserProfile = async (): Promise<UserProfile | null> => {
+    if (!user) return null;
+    
+    try {
+      const profileDoc = await getDoc(doc(db, "userProfiles", user.uid));
+      
+      if (profileDoc.exists()) {
+        const profile = profileDoc.data() as UserProfile;
+        
+        // Cache in localStorage
+        if (typeof window !== 'undefined') {
+          localStorage.setItem(STORAGE_KEY_USER_PROFILE, JSON.stringify(profile));
+        }
+        
+        return profile;
+      } else {
+        onError("User profile not found. Please complete your profile setup first.");
+        return null;
+      }
+    } catch (error) {
+      console.error("Error fetching user profile:", error);
+      throw error;
+    }
+  };
+  
+  // Function to fetch fuel types from Firebase
+  const fetchFuelTypes = async (): Promise<{[key: string]: string}> => {
+    try {
+      const fuelTypeMap: {[key: string]: string} = {
+        // Default fuel types
+        "petrol": "Petrol",
+        "diesel": "Diesel",
+        "super_diesel": "Super Diesel",
+        "kerosene": "Kerosene",
+        "gasoline": "Gasoline",
+        "octane_92": "Octane 92",
+        "octane_95": "Octane 95",
+        "LP95": "LP95",
+        "LP92": "LP92",
+        "LAD": "LAD",
+        "auto_diesel": "Auto Diesel",
+        "super_petrol": "Super Petrol"
+      };
+      
+      // Add from fuel prices context
+      fuelPrices.forEach(fuel => {
+        if (fuel.id) {
+          fuelTypeMap[fuel.id] = fuel.name;
+        }
+      });
+      
+      // Then fetch from Firestore
+      const fuelTypesSnapshot = await getDocs(collection(db, "fuelTypes"));
+      fuelTypesSnapshot.forEach(doc => {
+        fuelTypeMap[doc.id] = doc.data().name || doc.id;
+      });
+      
+      // Cache in localStorage
+      if (typeof window !== 'undefined') {
+        localStorage.setItem(STORAGE_KEY_FUEL_TYPES, JSON.stringify(fuelTypeMap));
+      }
+      
+      return fuelTypeMap;
+    } catch (error) {
+      console.error("Error fetching fuel types:", error);
+      throw error;
+    }
+  };
+
+  // Function to handle actual invoice creation in Firebase
+  const processInvoice = async () => {
+    if (!user || bills.length === 0) {
+      onError("Missing user or bill data");
+      return;
+    }
+
+    try {
+      setProcessing(true);
+      
+      // If we don't have a user profile or fuel types yet, fetch them now
+      let profile = userProfile;
+      let typesMap = fuelTypes;
+      
+      if (!profile) {
+        profile = await fetchUserProfile();
+        if (!profile) {
+          throw new Error("Could not fetch user profile");
+        }
+        setUserProfile(profile);
+      }
+      
+      if (Object.keys(typesMap).length === 0) {
+        typesMap = await fetchFuelTypes();
+        setFuelTypes(typesMap);
+      }
+      
+      // If we already have invoice data from preview, use it
+      let finalInvoiceData = invoiceData;
+      
+      // If not, generate it now
+      if (!finalInvoiceData) {
+        const fuelTypeGroups = groupBillsByFuelType(bills);
+        const invoiceItems = calculateInvoiceItems(fuelTypeGroups);
+        const invoiceTotals = calculateInvoiceTotals(invoiceItems);
+        
+        finalInvoiceData = {
+          userId: user.uid,
+          companyName,
+          companyVatNumber,
+          invoiceDate: new Date().toISOString().split('T')[0],
+          items: invoiceItems,
+          subTotal: invoiceTotals.subTotal,
+          vat18: invoiceTotals.vat18,
+          total: invoiceTotals.total,
+        };
+      }
+      
+      // Add necessary fields for Firebase
+      const firebaseInvoiceData = {
+        ...finalInvoiceData,
+        createdAt: serverTimestamp(),
+        status: "issued",
         userProfile: {
-          companyName: userProfile.stationName,
-          address: userProfile.address,
-          phone: userProfile.telephone,
-          email: userProfile.email,
-          vatNumber: userProfile.vatNumber,
+          companyName: profile.stationName,
+          address: profile.address,
+          phone: profile.telephone,
+          email: profile.email,
+          vatNumber: profile.vatNumber,
         },
         // Store original bills for reference
         originalBills: bills.map(bill => ({
@@ -186,7 +289,8 @@ export default function InvoiceGenerator({
         }))
       };
       
-      const invoiceRef = await addDoc(collection(db, "invoices"), invoiceData);
+      // Save to Firestore
+      const invoiceRef = await addDoc(collection(db, "invoices"), firebaseInvoiceData);
       
       onSuccess(invoiceRef.id);
       
@@ -195,6 +299,7 @@ export default function InvoiceGenerator({
       onError("Failed to create invoice. Please try again.");
     } finally {
       setProcessing(false);
+      setShowIntermediate(false);
     }
   };
   
@@ -297,19 +402,101 @@ export default function InvoiceGenerator({
       total
     };
   };
-
-  if (loading) {
+  
+  // Cancel preview and go back
+  const cancelPreview = () => {
+    setShowIntermediate(false);
+    setInvoiceData(null);
+  };
+  
+  // Show intermediate preview screen
+  if (showIntermediate && invoiceData) {
     return (
-      <div className="flex justify-center items-center p-6">
-        <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-blue-500"></div>
+      <div className="bg-white rounded-lg border border-gray-200 p-4">
+        <h3 className="text-lg font-semibold mb-4">Invoice Preview</h3>
+        
+        <div className="mb-4">
+          <p><span className="font-medium">Company:</span> {invoiceData.companyName}</p>
+          <p><span className="font-medium">VAT Number:</span> {invoiceData.companyVatNumber}</p>
+          <p><span className="font-medium">Date:</span> {invoiceData.invoiceDate}</p>
+        </div>
+        
+        <div className="mb-4">
+          <h4 className="font-medium mb-2">Items:</h4>
+          <div className="overflow-x-auto">
+            <table className="min-w-full border-collapse">
+              <thead>
+                <tr className="border-b">
+                  <th className="py-2 text-left">Fuel Type</th>
+                  <th className="py-2 text-right">Quantity (L)</th>
+                  <th className="py-2 text-right">Rate (Rs/L)</th>
+                  <th className="py-2 text-right">Amount (Rs)</th>
+                </tr>
+              </thead>
+              <tbody>
+                {invoiceData.items.map((item: InvoiceItem, index: number) => (
+                  <tr key={index} className="border-b">
+                    <td className="py-2">{item.fuelTypeName}</td>
+                    <td className="py-2 text-right">{item.quantityLitres.toFixed(2)}</td>
+                    <td className="py-2 text-right">{item.marketRate.toFixed(2)}</td>
+                    <td className="py-2 text-right">{item.amount.toFixed(2)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+        
+        <div className="flex justify-end mb-4">
+          <div className="w-40">
+            <div className="flex justify-between py-1">
+              <span>Subtotal:</span>
+              <span>Rs {invoiceData.subTotal.toFixed(2)}</span>
+            </div>
+            <div className="flex justify-between py-1">
+              <span>VAT (18%):</span>
+              <span>Rs {invoiceData.vat18.toFixed(2)}</span>
+            </div>
+            <div className="flex justify-between py-1 font-bold">
+              <span>Total:</span>
+              <span>Rs {invoiceData.total.toFixed(2)}</span>
+            </div>
+          </div>
+        </div>
+        
+        <div className="flex space-x-4">
+          <button
+            onClick={cancelPreview}
+            className="px-4 py-2 border border-gray-300 text-gray-700 rounded-md hover:bg-gray-50"
+            disabled={processing}
+          >
+            Back
+          </button>
+          
+          <button
+            onClick={processInvoice}
+            disabled={processing}
+            className="flex-grow px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 disabled:opacity-50"
+          >
+            {processing ? (
+              <>
+                <span className="animate-spin rounded-full h-4 w-4 border-t-2 border-b-2 border-white mr-2 inline-block"></span>
+                Processing...
+              </>
+            ) : (
+              "Confirm & Create Invoice"
+            )}
+          </button>
+        </div>
       </div>
     );
   }
 
+  // Show the main button if not in preview mode
   return (
     <button
-      onClick={processInvoice}
-      disabled={processing || !userProfile}
+      onClick={handlePreview}
+      disabled={processing || bills.length === 0}
       className="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 disabled:opacity-50"
     >
       {processing ? (
