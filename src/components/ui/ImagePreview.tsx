@@ -4,7 +4,8 @@ import { useFuelPrices, type FuelPrice } from '@/lib/contexts/FuelPricesContext'
 interface ImagePreviewProps {
   imageSrc: string;
   onRetake: () => void;
-  onNext: () => void;
+  onNext: (extractedData: ExtractedData) => void;
+  onComplete?: (extractedData: ExtractedData) => void;
 }
 
 interface ExtractedData {
@@ -14,7 +15,7 @@ interface ExtractedData {
   fuelType?: string;
 }
 
-export default function ImagePreview({ imageSrc, onRetake, onNext }: ImagePreviewProps) {
+export default function ImagePreview({ imageSrc, onRetake, onNext, onComplete }: ImagePreviewProps) {
   const [extractedText, setExtractedText] = useState<string>('');
   const [extractedData, setExtractedData] = useState<ExtractedData | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
@@ -180,7 +181,34 @@ export default function ImagePreview({ imageSrc, onRetake, onNext }: ImagePrevie
     
     // If no errors, proceed
     if (Object.keys(errors).length === 0) {
-      onNext();
+      onNext(extractedData);
+    }
+  };
+
+  const handleComplete = () => {
+    if (!extractedData) return;
+    
+    // Validate all fields
+    const errors: {[key: string]: string} = {};
+    
+    ['rate', 'volume', 'amount'].forEach((field) => {
+      const value = extractedData[field as keyof ExtractedData];
+      if (!value) {
+        errors[field] = 'This field is required';
+      } else if (isNaN(parseFloat(value as string))) {
+        errors[field] = 'Must be a valid number';
+      }
+    });
+    
+    if (!extractedData.fuelType) {
+      errors.fuelType = 'Please select a fuel type';
+    }
+    
+    setFieldErrors(errors);
+    
+    // If no errors, proceed
+    if (Object.keys(errors).length === 0 && onComplete) {
+      onComplete(extractedData);
     }
   };
 
@@ -321,14 +349,22 @@ export default function ImagePreview({ imageSrc, onRetake, onNext }: ImagePrevie
         <div className="flex justify-between mt-6">
           <button
             onClick={onRetake}
-            className="px-6 py-3 bg-red-600 text-white rounded-lg hover:bg-red-700 focus:outline-none w-full max-w-[160px]"
+            className="px-6 py-3 bg-red-600 text-white rounded-lg hover:bg-red-700 focus:outline-none"
           >
             Retake
           </button>
           
           <button
+            onClick={handleComplete}
+            className="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 focus:outline-none"
+            disabled={loading || fuelPricesLoading}
+          >
+            Complete
+          </button>
+          
+          <button
             onClick={handleNext}
-            className="px-6 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 focus:outline-none w-full max-w-[160px]"
+            className="px-6 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 focus:outline-none"
             disabled={loading || fuelPricesLoading}
           >
             Next

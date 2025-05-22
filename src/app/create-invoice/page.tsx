@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import { useAuth } from "@/lib/hooks/useAuth";
 import { useRouter } from "next/navigation";
 import InvoiceForm from "@/components/ui/InvoiceForm";
+import { InvoiceSessionProvider } from "@/lib/contexts/InvoiceSessionContext";
 
 export default function CreateInvoice() {
   const { user, loading } = useAuth();
@@ -33,7 +34,9 @@ export default function CreateInvoice() {
     <main className="min-h-screen p-4 md:p-8 bg-gray-50">
       <div className="max-w-4xl mx-auto">
         <h1 className="text-2xl md:text-3xl font-bold mb-6">Create Invoice</h1>
-        <InvoiceForm />
+        <InvoiceSessionProvider>
+          <InvoiceForm />
+        </InvoiceSessionProvider>
       </div>
     </main>
   );

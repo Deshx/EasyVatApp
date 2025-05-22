@@ -17,6 +17,7 @@ import { db } from "@/lib/firebase/firebase";
 import { useRouter } from "next/navigation";
 import Camera from "./Camera";
 import ImagePreview from "./ImagePreview";
+import { useInvoiceSession, BillData } from "@/lib/contexts/InvoiceSessionContext";
 
 interface Company {
   id: string;
@@ -50,6 +51,9 @@ export default function InvoiceForm() {
   const [showCamera, setShowCamera] = useState(false);
   const [capturedImage, setCapturedImage] = useState<string | null>(null);
   const [showPreview, setShowPreview] = useState(false);
+  
+  // Use the invoice session context
+  const { sessionBills, addBill, clearSession, currentIndex, setCurrentIndex } = useInvoiceSession();
   
   const [formData, setFormData] = useState<InvoiceFormData>({
     companyName: "",
@@ -191,16 +195,84 @@ export default function InvoiceForm() {
     setEditing(true);
   };
 
-  const handleNext = () => {
-    console.log('Proceeding with invoice creation');
+  const handleCapture = (imageSrc: string) => {
+    console.log('Image captured, camera should be off now');
+    setCapturedImage(imageSrc);
+    setShowCamera(false);
+    setShowPreview(true);
+  };
+
+  const handleRetake = () => {
+    console.log('Retaking photo, opening camera again');
+    setCapturedImage(null);
     setShowPreview(false);
-    // If we want to add more steps, we could toggle other state variables here
-    // For now, just trigger the form submission
-    handleInvoiceCreation();
+    setShowCamera(true);
+  };
+
+  const handleNext = () => {
+    console.log('Proceeding with next bill capture');
+    
+    if (capturedImage) {
+      // Get the extracted data from the ImagePreview component and add to session
+      // This will be passed through the onNext callback
+      setShowPreview(false);
+      
+      // Reset for next capture
+      setCapturedImage(null);
+      
+      // Open camera for next capture
+      setShowCamera(true);
+    }
+  };
+  
+  const handleCompleteSession = () => {
+    console.log('Completing session with bills:', sessionBills);
+    
+    if (capturedImage) {
+      // Get the extracted data from the ImagePreview component and add to session
+      // This will be passed through the onComplete callback
+      setCapturedImage(null);
+      setShowPreview(false);
+    }
+    
+    // Here we would process the completed session
+    // For now, just log the bills and reset
+    console.log('Session complete with bills:', sessionBills);
+    
+    // Return to form view - don't clear the session until the user creates the invoice
+    setShowCamera(false);
+  };
+
+  // Add a function to handle the extracted data from ImagePreview
+  const handleExtractedData = (imageSrc: string, extractedData: any) => {
+    // Add the bill to the session
+    addBill({
+      imageSrc,
+      extractedData
+    });
+    
+    // Increment the current index
+    setCurrentIndex(currentIndex + 1);
+  };
+
+  const openCamera = () => {
+    console.log('Opening camera');
+    setShowCamera(true);
+  };
+
+  const closeCamera = () => {
+    console.log('Closing camera without capturing');
+    setShowCamera(false);
+  };
+  
+  // Define handleSubmit to open camera
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    openCamera();
   };
 
   const handleInvoiceCreation = async () => {
-    if (!user) return;
+    if (!user || sessionBills.length === 0) return;
 
     try {
       setLoading(true);
@@ -260,7 +332,7 @@ export default function InvoiceForm() {
         }
       }
       
-      // Create invoice with the captured image
+      // Create invoice with the captured bills
       const invoiceData: any = {
         userId: user.uid,
         companyId,
@@ -269,16 +341,20 @@ export default function InvoiceForm() {
         companyVatNumber: vatNumber,
         invoiceDate: formData.invoiceDate,
         createdAt: serverTimestamp(),
-        status: "draft" // Or "issued", depending on your workflow
+        status: "draft", // Or "issued", depending on your workflow
+        bills: sessionBills.map(bill => ({
+          imageSrc: bill.imageSrc,
+          rate: bill.extractedData.rate,
+          volume: bill.extractedData.volume,
+          amount: bill.extractedData.amount,
+          fuelType: bill.extractedData.fuelType
+        }))
       };
-
-      // If we have a captured image, add it to the invoice data
-      if (capturedImage) {
-        invoiceData.hasImage = true;
-        invoiceData.imageSrc = capturedImage;
-      }
       
       const invoiceRef = await addDoc(collection(db, "invoices"), invoiceData);
+      
+      // Clear the session after successful creation
+      clearSession();
       
       // Navigate to edit invoice page
       router.push(`/invoice/${invoiceRef.id}`);
@@ -289,36 +365,6 @@ export default function InvoiceForm() {
     } finally {
       setLoading(false);
     }
-  };
-
-  const handleCapture = (imageSrc: string) => {
-    console.log('Image captured, camera should be off now');
-    setCapturedImage(imageSrc);
-    setShowCamera(false);
-    setShowPreview(true);
-  };
-
-  const handleRetake = () => {
-    console.log('Retaking photo, opening camera again');
-    setCapturedImage(null);
-    setShowPreview(false);
-    setShowCamera(true);
-  };
-
-  const openCamera = () => {
-    console.log('Opening camera');
-    setShowCamera(true);
-  };
-
-  const closeCamera = () => {
-    console.log('Closing camera without capturing');
-    setShowCamera(false);
-  };
-  
-  // Define handleSubmit to open camera
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    openCamera();
   };
 
   return (
@@ -337,12 +383,37 @@ export default function InvoiceForm() {
         <ImagePreview 
           imageSrc={capturedImage} 
           onRetake={handleRetake} 
-          onNext={handleNext} 
+          onNext={(extractedData) => {
+            handleExtractedData(capturedImage, extractedData);
+            handleNext();
+          }}
+          onComplete={(extractedData) => {
+            handleExtractedData(capturedImage, extractedData);
+            handleCompleteSession();
+          }} 
         />
       )}
       
       {!showPreview && !showCamera && (
         <form onSubmit={handleSubmit} className="space-y-6">
+          {/* Show bills in the current session if any */}
+          {sessionBills.length > 0 && (
+            <div className="mb-6">
+              <h3 className="text-lg font-medium mb-2">Bills in current session: {sessionBills.length}</h3>
+              <div className="flex flex-wrap gap-4">
+                {sessionBills.map((bill, index) => (
+                  <div key={index} className="border border-gray-200 rounded-lg p-2 w-32 h-32 flex items-center justify-center overflow-hidden">
+                    <img 
+                      src={bill.imageSrc} 
+                      alt={`Bill ${index + 1}`} 
+                      className="max-w-full max-h-full object-contain" 
+                    />
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+          
           <div className="relative" ref={suggestionRef}>
             <label htmlFor="companyVatNumber" className="block text-sm font-medium text-gray-700 mb-1">
               VAT Number*
@@ -458,11 +529,22 @@ export default function InvoiceForm() {
               type="submit"
               className="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50"
             >
-              Create Invoice
+              {sessionBills.length > 0 ? "Scan Another Bill" : "Scan Bill"}
             </button>
+            
+            {sessionBills.length > 0 && (
+              <button
+                type="button"
+                onClick={handleInvoiceCreation}
+                className="mt-4 w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 disabled:opacity-50"
+                disabled={loading}
+              >
+                Create Invoice with {sessionBills.length} {sessionBills.length === 1 ? 'Bill' : 'Bills'}
+              </button>
+            )}
           </div>
         </form>
       )}
     </div>
   );
-} 
+}
