@@ -18,6 +18,7 @@ export async function POST(req: Request) {
     }
     
     const apiKey = process.env.OPENAI_API_KEY;
+    const model = process.env.MODEL || "gpt-4.1-mini";
     
     if (!apiKey) {
       return NextResponse.json(
@@ -53,7 +54,7 @@ export async function POST(req: Request) {
       `;
 
       const response = await openai.chat.completions.create({
-        model: "gpt-4.1-nano",
+        model,
         messages: [
           {
             role: "system",
@@ -118,7 +119,7 @@ export async function POST(req: Request) {
       `;
 
       const response = await openai.chat.completions.create({
-        model: "gpt-4.1-nano",
+        model,
         messages: [
           {
             role: "system",

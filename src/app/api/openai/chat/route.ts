@@ -4,7 +4,8 @@ import { convertToCoreMessages, streamText } from "ai";
 export const runtime = "edge";
 
 export async function POST(req: Request) {
-  const { messages, model = "gpt-4.1-nano" } = await req.json();
+  const defaultModel = process.env.MODEL || "gpt-4.1-mini";
+  const { messages, model = defaultModel } = await req.json();
   
   // Log the API payload for debugging
   console.log("OpenAI Chat API payload:", {
