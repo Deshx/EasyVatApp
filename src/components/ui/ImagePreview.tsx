@@ -242,16 +242,16 @@ export default function ImagePreview({ imageSrc, onRetake, onNext, onComplete }:
 
   return (
     <div className="bg-white rounded-lg shadow-md h-full flex flex-col">
-      <div className="p-4 flex-grow flex flex-col">
+      <div className="p-4 flex-grow">
         <h2 className="text-xl font-semibold mb-4">Review Bill</h2>
         
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 flex-grow">
+        <div className="flex flex-row gap-6">
           {/* Image preview */}
-          <div className="bg-gray-100 rounded-lg overflow-hidden flex items-center justify-center relative">
+          <div className="bg-gray-100 rounded-lg overflow-hidden flex items-center justify-center relative w-1/2">
             <img 
               src={imageSrc} 
               alt="Captured bill" 
-              className="max-w-full max-h-[300px] md:max-h-[500px] object-contain" 
+              className="max-w-full max-h-[500px] object-contain" 
             />
             
             {/* Scanning animation overlay */}
@@ -275,7 +275,7 @@ export default function ImagePreview({ imageSrc, onRetake, onNext, onComplete }:
           </div>
           
           {/* Extracted data form */}
-          <div className="bg-white rounded-lg flex flex-col">
+          <div className="bg-white rounded-lg w-1/2">
             {loading ? (
               <div className="flex flex-col items-center justify-center h-full">
                 <div className="text-gray-500 text-center">

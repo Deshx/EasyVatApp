@@ -110,6 +110,19 @@ export default function InvoiceGenerator({
     }
   }, []);
   
+  // Automatically show invoice preview when component mounts
+  useEffect(() => {
+    // Only attempt to show preview if we have bills
+    if (bills.length > 0) {
+      // Small delay to ensure component is fully mounted
+      const timer = setTimeout(() => {
+        handlePreview();
+      }, 100);
+      
+      return () => clearTimeout(timer);
+    }
+  }, [bills]);
+  
   // Function to show bill preview and calculations before saving
   const handlePreview = () => {
     if (bills.length === 0) {

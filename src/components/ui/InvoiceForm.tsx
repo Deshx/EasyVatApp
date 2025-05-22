@@ -313,7 +313,7 @@ export default function InvoiceForm() {
                 ))}
               </div>
               
-              <div className="mt-4 flex space-x-4">
+              <div className="mt-4">
                 <button
                   type="button"
                   onClick={openCamera}
@@ -321,18 +321,20 @@ export default function InvoiceForm() {
                 >
                   Scan Another Bill
                 </button>
-                
-                {/* Only show create invoice button if we have company details and bills */}
-                {vatNumberChecked && formData.companyName && sessionBills.length > 0 && (
+              </div>
+              
+              {/* Always show the InvoiceGenerator when there are bills */}
+              {sessionBills.length > 0 && (
+                <div className="mt-6">
                   <InvoiceGenerator
                     bills={sessionBills}
-                    companyName={formData.companyName}
-                    companyVatNumber={formData.companyVatNumber}
+                    companyName={formData.companyName || "test company 1 xtest"}
+                    companyVatNumber={formData.companyVatNumber || "t1-12345678"}
                     onSuccess={handleInvoiceSuccess}
                     onError={handleInvoiceError}
                   />
-                )}
-              </div>
+                </div>
+              )}
             </div>
           )}
           
