@@ -26,7 +26,7 @@ export default function ImagePreview({ imageSrc, onRetake, onNext }: ImagePrevie
   const { fuelPrices, loading: fuelPricesLoading, getFuelTypeByRate } = useFuelPrices();
 
   useEffect(() => {
-    async function extractTextFromImage() {
+    async function processImage() {
       // Prevent duplicate calls in development mode (StrictMode)
       if (processingRef.current) return;
       processingRef.current = true;
@@ -35,46 +35,49 @@ export default function ImagePreview({ imageSrc, onRetake, onNext }: ImagePrevie
         setLoading(true);
         setError(null);
         
-        console.log("Sending image to OCR API...");
+        console.log("Sending image to parse-receipt API for direct extraction...");
         
-        // Prepare the payload for the OCR API
-        const payload = {
-          base64Image: imageSrc,
-          prompt: 'Extract the raw text from this receipt. DO NOT add any commentary, introduction sentences, formatting, or markdown. DO NOT include phrases like "The text on the receipt is" or "The extracted text from the receipt is". DO NOT put the text in a code block. Return ONLY the plain extracted text.'
-        };
-        
-        // Log the payload (without the full base64 image for readability)
-        console.log("OCR API payload:", { 
-          ...payload, 
-          base64Image: payload.base64Image.substring(0, 50) + '...[truncated]' 
-        });
-        
-        // Call our dedicated API endpoint for image OCR
-        const response = await fetch('/api/openai/image-ocr', {
+        // Call our consolidated parse-receipt endpoint directly with the image
+        const response = await fetch('/api/openai/parse-receipt', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
           },
-          body: JSON.stringify(payload),
+          body: JSON.stringify({
+            base64Image: imageSrc
+          }),
         });
 
         const data = await response.json();
         
         if (!response.ok) {
-          throw new Error(data.error || 'Failed to extract text from image');
+          throw new Error(data.error || 'Failed to process receipt image');
         }
 
-        console.log("OCR response received successfully");
-        const text = data.text || '';
-        setExtractedText(text);
-        console.log("Extracted text:", text);
+        console.log("Receipt parsing response received successfully:", data);
         
-        // Now extract the rate, volume and amount using the parse-receipt endpoint
-        await extractLineItems(text);
-        
+        // Check if the data has the expected structure
+        if (data && data.rate && data.volume && data.price) {
+          const extractedData: ExtractedData = {
+            rate: data.rate,
+            volume: data.volume,
+            amount: data.price
+          };
+          
+          // Detect fuel type based on rate
+          const detectedFuelType = getFuelTypeByRate(data.rate);
+          if (detectedFuelType) {
+            extractedData.fuelType = detectedFuelType;
+          }
+          
+          console.log("Final extracted data:", extractedData);
+          setExtractedData(extractedData);
+        } else {
+          throw new Error("Missing required fields in extracted data");
+        }
       } catch (err: any) {
-        console.error('Error extracting text:', err);
-        setError(`Failed to extract text from image: ${err.message || 'Unknown error'}`);
+        console.error('Error processing receipt:', err);
+        setError(`Failed to process receipt: ${err.message || 'Unknown error'}`);
         
         // Last resort fallback - use hardcoded values from example
         const fallbackData: ExtractedData = {
@@ -96,7 +99,7 @@ export default function ImagePreview({ imageSrc, onRetake, onNext }: ImagePrevie
     }
 
     if (imageSrc) {
-      extractTextFromImage();
+      processImage();
     }
     
     // Cleanup function
@@ -104,67 +107,6 @@ export default function ImagePreview({ imageSrc, onRetake, onNext }: ImagePrevie
       processingRef.current = false;
     };
   }, [imageSrc, getFuelTypeByRate]);
-
-  // Function to extract line items using the parse-receipt endpoint
-  const extractLineItems = async (text: string) => {
-    try {
-      console.log("Extracting line items via parse-receipt endpoint...");
-      
-      // Call the dedicated parse-receipt endpoint
-      const response = await fetch('/api/openai/parse-receipt', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ text }),
-      });
-
-      const data = await response.json();
-      console.log("Line item extraction response:", data);
-      
-      if (!response.ok) {
-        throw new Error(data.error || 'Failed to extract line items');
-      }
-
-      // Check if the data has the expected structure
-      if (data && data.rate && data.volume && data.price) {
-        const extractedData: ExtractedData = {
-          rate: data.rate,
-          volume: data.volume,
-          amount: data.price
-        };
-        
-        // Detect fuel type based on rate
-        const detectedFuelType = getFuelTypeByRate(data.rate);
-        if (detectedFuelType) {
-          extractedData.fuelType = detectedFuelType;
-        }
-        
-        console.log("Final extracted data:", extractedData);
-        setExtractedData(extractedData);
-      } else {
-        throw new Error("Missing required fields in extracted data");
-      }
-    } catch (err) {
-      console.error("Line item extraction failed:", err);
-      
-      // Fall back to hardcoded values on failure
-      console.log("Using fallback hardcoded values");
-      const fallbackData: ExtractedData = {
-        rate: "274.00",
-        volume: "3.65",
-        amount: "1000.00"
-      };
-      
-      // Detect fuel type based on fallback rate
-      const detectedFuelType = getFuelTypeByRate(fallbackData.rate);
-      if (detectedFuelType) {
-        fallbackData.fuelType = detectedFuelType;
-      }
-      
-      setExtractedData(fallbackData);
-    }
-  };
 
   // Handle field changes
   const handleFieldChange = (field: keyof ExtractedData, value: string) => {
@@ -249,12 +191,31 @@ export default function ImagePreview({ imageSrc, onRetake, onNext }: ImagePrevie
         
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 flex-grow">
           {/* Image preview on left */}
-          <div className="bg-gray-100 rounded-lg overflow-hidden flex items-center justify-center">
+          <div className="bg-gray-100 rounded-lg overflow-hidden flex items-center justify-center relative">
             <img 
               src={imageSrc} 
               alt="Captured bill" 
               className="max-w-full max-h-[300px] md:max-h-[400px] object-contain" 
             />
+            
+            {/* Scanning animation overlay */}
+            {loading && (
+              <div className="absolute inset-0 overflow-hidden pointer-events-none">
+                {/* Semi-transparent overlay */}
+                <div className="absolute inset-0 bg-black bg-opacity-10"></div>
+                
+                {/* Scanning line */}
+                <div className="absolute left-0 right-0 h-1 bg-blue-400 bg-opacity-70 shadow-[0_0_10px_2px_rgba(59,130,246,0.7)] animate-scan">
+                  {/* Glow effect */}
+                  <div className="absolute inset-0 blur-sm bg-blue-400"></div>
+                </div>
+                
+                {/* Text overlay */}
+                <div className="absolute bottom-2 left-0 right-0 text-center text-white text-sm font-medium bg-black bg-opacity-40 py-1">
+                  Scanning receipt...
+                </div>
+              </div>
+            )}
           </div>
           
           {/* Extracted text on right */}
