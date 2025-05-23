@@ -35,26 +35,34 @@ interface InvoiceSessionContextType {
   recheckModeActive: boolean;
   setRecheckModeActive: (active: boolean) => void;
   refreshFromLocalStorage: () => void;
+  sessionId: string;
 }
 
 // Create context
 const InvoiceSessionContext = createContext<InvoiceSessionContextType | undefined>(undefined);
 
-// localStorage keys
-const STORAGE_KEY_BILLS = 'easyVat_sessionBills';
-const STORAGE_KEY_INDEX = 'easyVat_currentIndex';
-
 // Provider component
-export function InvoiceSessionProvider({ children }: { children: ReactNode }) {
+export function InvoiceSessionProvider({ 
+  children, 
+  sessionId 
+}: { 
+  children: ReactNode;
+  sessionId: string;
+}) {
   const [sessionBills, setSessionBills] = useState<BillData[]>([]);
   const [currentIndex, setCurrentIndex] = useState<number>(0);
   const [recheckModeActive, setRecheckModeActive] = useState<boolean>(false);
+
+  // Generate namespaced localStorage keys using sessionId
+  const getStorageKey = (key: string) => `easyVat_${sessionId}_${key}`;
+  const STORAGE_KEY_BILLS = getStorageKey('sessionBills');
+  const STORAGE_KEY_INDEX = getStorageKey('currentIndex');
 
   // Function to refresh data from localStorage
   const refreshFromLocalStorage = () => {
     if (typeof window !== 'undefined') {
       try {
-        console.log('Refreshing session bills from localStorage');
+        console.log(`Refreshing session bills from localStorage for session: ${sessionId}`);
         // Load session bills
         const storedBills = localStorage.getItem(STORAGE_KEY_BILLS);
         if (storedBills) {
@@ -74,10 +82,10 @@ export function InvoiceSessionProvider({ children }: { children: ReactNode }) {
     }
   };
 
-  // Load data from localStorage on component mount
+  // Load data from localStorage on component mount or sessionId change
   useEffect(() => {
     refreshFromLocalStorage();
-  }, []);
+  }, [sessionId]);
 
   const addBill = (bill: BillData) => {
     console.log("Adding bill with fuel type name:", bill.extractedData.fuelTypeName);
@@ -132,7 +140,8 @@ export function InvoiceSessionProvider({ children }: { children: ReactNode }) {
         setCurrentIndex: updateCurrentIndex,
         recheckModeActive,
         setRecheckModeActive,
-        refreshFromLocalStorage
+        refreshFromLocalStorage,
+        sessionId
       }}
     >
       {children}

@@ -66,14 +66,14 @@ export default function InvoiceGenerator({
   onError, 
   onPreviewStateChange 
 }: InvoiceGeneratorProps) {
-  const { user } = useAuth();
   const router = useRouter();
-  const { sessionBills } = useInvoiceSession();
+  const { user } = useAuth();
+  const { fuelPrices } = useFuelPrices();
+  const { sessionBills, refreshFromLocalStorage, sessionId } = useInvoiceSession();
   const [loading, setLoading] = useState(false);
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
   const [processing, setProcessing] = useState(false);
   const [fuelTypes, setFuelTypes] = useState<{[key: string]: string}>({});
-  const { fuelPrices } = useFuelPrices();
   const [showIntermediate, setShowIntermediate] = useState(false);
   const [invoiceData, setInvoiceData] = useState<any>(null);
   
@@ -159,10 +159,10 @@ export default function InvoiceGenerator({
   // Auto-show preview when returning from recheck mode
   useEffect(() => {
     if (typeof window !== 'undefined') {
-      const returnFromRecheck = localStorage.getItem('easyVat_returnFromRecheck');
+      const returnFromRecheck = localStorage.getItem(`easyVat_${sessionId}_returnFromRecheck`);
       if (returnFromRecheck === 'true' && currentBills.length > 0 && !showIntermediate) {
         // Clear the flag
-        localStorage.removeItem('easyVat_returnFromRecheck');
+        localStorage.removeItem(`easyVat_${sessionId}_returnFromRecheck`);
         // Auto-show preview
         handlePreview();
       }
@@ -532,7 +532,7 @@ export default function InvoiceGenerator({
 
           {/* Recheck button - navigate to recheck page */}
           <button
-            onClick={() => router.push('/recheck-bills')}
+            onClick={() => router.push(`/recheck-bills/${sessionId}`)}
             className="px-4 py-2 border border-blue-500 text-blue-500 rounded-md hover:bg-blue-50"
             disabled={processing}
           >

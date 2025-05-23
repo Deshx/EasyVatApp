@@ -40,12 +40,19 @@ export default function Dashboard() {
 
   // Handle Create Invoice button click - clear any existing session first
   const handleCreateInvoice = () => {
-    // Clear invoice session data from localStorage
+    // Clear all invoice session data from localStorage
     if (typeof window !== 'undefined') {
-      localStorage.removeItem('easyVat_sessionBills');
-      localStorage.removeItem('easyVat_currentIndex');
+      // Find and remove all session-related keys
+      const keysToRemove = [];
+      for (let i = 0; i < localStorage.length; i++) {
+        const key = localStorage.key(i);
+        if (key && key.startsWith('easyVat_')) {
+          keysToRemove.push(key);
+        }
+      }
+      keysToRemove.forEach(key => localStorage.removeItem(key));
     }
-    // Navigate to create invoice page
+    // Navigate to create invoice page (which will generate a new session)
     router.push('/create-invoice');
   };
 
