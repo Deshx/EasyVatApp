@@ -6,6 +6,7 @@ import { db } from '@/lib/firebase/firebase';
 import { BillData } from '@/lib/contexts/InvoiceSessionContext';
 import { useFuelPrices } from '@/lib/contexts/FuelPricesContext';
 import './InvoiceGenerator.css';
+import { useInvoiceSession } from '@/lib/contexts/InvoiceSessionContext';
 
 interface InvoiceGeneratorProps {
   bills: BillData[];
@@ -13,6 +14,7 @@ interface InvoiceGeneratorProps {
   companyVatNumber: string;
   onSuccess: (invoiceId: string) => void;
   onError: (error: string) => void;
+  onPreviewStateChange?: (isActive: boolean) => void;
 }
 
 interface FuelTypeGroup {
@@ -61,10 +63,12 @@ export default function InvoiceGenerator({
   companyName, 
   companyVatNumber, 
   onSuccess, 
-  onError 
+  onError, 
+  onPreviewStateChange 
 }: InvoiceGeneratorProps) {
   const { user } = useAuth();
   const router = useRouter();
+  const { sessionBills } = useInvoiceSession();
   const [loading, setLoading] = useState(false);
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
   const [processing, setProcessing] = useState(false);
@@ -72,6 +76,9 @@ export default function InvoiceGenerator({
   const { fuelPrices } = useFuelPrices();
   const [showIntermediate, setShowIntermediate] = useState(false);
   const [invoiceData, setInvoiceData] = useState<any>(null);
+  
+  // Use sessionBills from context (which includes updates from localStorage) instead of the bills prop
+  const currentBills = sessionBills.length > 0 ? sessionBills : bills;
   
   // Load from localStorage on mount
   useEffect(() => {
@@ -110,29 +117,16 @@ export default function InvoiceGenerator({
     }
   }, []);
   
-  // Automatically show invoice preview when component mounts
-  useEffect(() => {
-    // Only attempt to show preview if we have bills
-    if (bills.length > 0) {
-      // Small delay to ensure component is fully mounted
-      const timer = setTimeout(() => {
-        handlePreview();
-      }, 100);
-      
-      return () => clearTimeout(timer);
-    }
-  }, [bills]);
-  
   // Function to show bill preview and calculations before saving
   const handlePreview = () => {
-    if (bills.length === 0) {
+    if (currentBills.length === 0) {
       onError("No bills to process");
       return;
     }
     
     try {
       // Group bills by fuel type
-      const fuelTypeGroups = groupBillsByFuelType(bills);
+      const fuelTypeGroups = groupBillsByFuelType(currentBills);
       
       // Calculate invoice items
       const invoiceItems = calculateInvoiceItems(fuelTypeGroups);
@@ -155,11 +149,59 @@ export default function InvoiceGenerator({
       
       setInvoiceData(newInvoiceData);
       setShowIntermediate(true);
+      onPreviewStateChange?.(true);
     } catch (err) {
       console.error("Error generating invoice preview:", err);
       onError("Failed to generate invoice preview. Please try again.");
     }
   };
+  
+  // Auto-show preview when returning from recheck mode
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const returnFromRecheck = localStorage.getItem('easyVat_returnFromRecheck');
+      if (returnFromRecheck === 'true' && currentBills.length > 0 && !showIntermediate) {
+        // Clear the flag
+        localStorage.removeItem('easyVat_returnFromRecheck');
+        // Auto-show preview
+        handlePreview();
+      }
+    }
+  }, [currentBills.length, showIntermediate]); // Simplified dependencies
+  
+  // Auto-show preview when bills are available (skip intermediate step)
+  useEffect(() => {
+    if (currentBills.length > 0 && !showIntermediate && !invoiceData) {
+      // Automatically show the invoice preview instead of showing the button first
+      handlePreview();
+    }
+  }, [currentBills.length, showIntermediate, invoiceData]);
+  
+  // Refresh invoice preview when returning from recheck page
+  useEffect(() => {
+    if (showIntermediate && invoiceData && currentBills.length > 0) {
+      // Check if bills have been updated and refresh the preview
+      const timer = setTimeout(() => {
+        try {
+          const fuelTypeGroups = groupBillsByFuelType(currentBills);
+          const invoiceItems = calculateInvoiceItems(fuelTypeGroups);
+          const invoiceTotals = calculateInvoiceTotals(invoiceItems);
+          
+          setInvoiceData(prev => ({
+            ...prev,
+            items: invoiceItems,
+            subTotal: invoiceTotals.subTotal,
+            vat18: invoiceTotals.vat18,
+            total: invoiceTotals.total,
+          }));
+        } catch (error) {
+          console.error("Error refreshing invoice data:", error);
+        }
+      }, 100);
+      
+      return () => clearTimeout(timer);
+    }
+  }, [currentBills, showIntermediate, invoiceData]);
   
   // Function to fetch user profile from Firebase
   const fetchUserProfile = async (): Promise<UserProfile | null> => {
@@ -233,7 +275,7 @@ export default function InvoiceGenerator({
 
   // Function to handle actual invoice creation in Firebase
   const processInvoice = async () => {
-    if (!user || bills.length === 0) {
+    if (!user || currentBills.length === 0) {
       onError("Missing user or bill data");
       return;
     }
@@ -263,7 +305,7 @@ export default function InvoiceGenerator({
       
       // If not, generate it now
       if (!finalInvoiceData) {
-        const fuelTypeGroups = groupBillsByFuelType(bills);
+        const fuelTypeGroups = groupBillsByFuelType(currentBills);
         const invoiceItems = calculateInvoiceItems(fuelTypeGroups);
         const invoiceTotals = calculateInvoiceTotals(invoiceItems);
         
@@ -292,7 +334,7 @@ export default function InvoiceGenerator({
           vatNumber: profile.vatNumber,
         },
         // Store original bills for reference
-        originalBills: bills.map(bill => ({
+        originalBills: currentBills.map(bill => ({
           imageSrc: bill.imageSrc,
           rate: bill.extractedData.rate,
           volume: bill.extractedData.volume,
@@ -313,6 +355,7 @@ export default function InvoiceGenerator({
     } finally {
       setProcessing(false);
       setShowIntermediate(false);
+      onPreviewStateChange?.(false);
     }
   };
   
@@ -420,6 +463,7 @@ export default function InvoiceGenerator({
   const cancelPreview = () => {
     setShowIntermediate(false);
     setInvoiceData(null);
+    onPreviewStateChange?.(false);
   };
   
   // Show intermediate preview screen
@@ -485,7 +529,16 @@ export default function InvoiceGenerator({
           >
             Back
           </button>
-          
+
+          {/* Recheck button - navigate to recheck page */}
+          <button
+            onClick={() => router.push('/recheck-bills')}
+            className="px-4 py-2 border border-blue-500 text-blue-500 rounded-md hover:bg-blue-50"
+            disabled={processing}
+          >
+            Recheck
+          </button>
+           
           <button
             onClick={processInvoice}
             disabled={processing}
@@ -509,7 +562,7 @@ export default function InvoiceGenerator({
   return (
     <button
       onClick={handlePreview}
-      disabled={processing || bills.length === 0}
+      disabled={processing || currentBills.length === 0}
       className="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 disabled:opacity-50"
     >
       {processing ? (
@@ -518,7 +571,7 @@ export default function InvoiceGenerator({
           Processing...
         </>
       ) : (
-        `Create Invoice with ${bills.length} ${bills.length === 1 ? 'Bill' : 'Bills'}`
+        `Create Invoice with ${currentBills.length} ${currentBills.length === 1 ? 'Bill' : 'Bills'}`
       )}
     </button>
   );

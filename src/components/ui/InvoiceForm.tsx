@@ -54,7 +54,10 @@ export default function InvoiceForm() {
   const [showPreview, setShowPreview] = useState(false);
   
   // Use the invoice session context
-  const { sessionBills, addBill, clearSession, currentIndex, setCurrentIndex } = useInvoiceSession();
+  const { sessionBills, addBill, clearSession, currentIndex, setCurrentIndex, recheckModeActive } = useInvoiceSession();
+  
+  // State to track if invoice preview is active
+  const [invoicePreviewActive, setInvoicePreviewActive] = useState(false);
   
   const [formData, setFormData] = useState<InvoiceFormData>({
     companyName: "",
@@ -298,8 +301,8 @@ export default function InvoiceForm() {
       {!showPreview && !showCamera && (
         <>
           {/* Show bills in the current session if any */}
-          {sessionBills.length > 0 && (
-            <div className="mb-6">
+          {sessionBills.length > 0 && !recheckModeActive && (
+            <div className="mb-6" data-bills-session>
               <h3 className="text-lg font-medium mb-2">Bills in current session: {sessionBills.length}</h3>
               <div className="flex flex-wrap gap-4">
                 {sessionBills.map((bill, index) => (
@@ -332,14 +335,15 @@ export default function InvoiceForm() {
                     companyVatNumber={formData.companyVatNumber || "t1-12345678"}
                     onSuccess={handleInvoiceSuccess}
                     onError={handleInvoiceError}
+                    onPreviewStateChange={setInvoicePreviewActive}
                   />
                 </div>
               )}
             </div>
           )}
           
-          {/* Show form if no bills or if there are bills but still need company info */}
-          {(sessionBills.length === 0 || (sessionBills.length > 0 && (!vatNumberChecked || !formData.companyName))) && (
+          {/* Show form if no bills or if there are bills but still need company info AND invoice preview is not active */}
+          {!invoicePreviewActive && (sessionBills.length === 0 || (sessionBills.length > 0 && (!vatNumberChecked || !formData.companyName))) && (
             <form onSubmit={handleSubmit} className="space-y-6">
               <div className="relative" ref={suggestionRef}>
                 <label htmlFor="companyVatNumber" className="block text-sm font-medium text-gray-700 mb-1">

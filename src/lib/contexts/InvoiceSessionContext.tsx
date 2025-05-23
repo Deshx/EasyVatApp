@@ -32,6 +32,9 @@ interface InvoiceSessionContextType {
   clearSession: () => void;
   currentIndex: number;
   setCurrentIndex: (index: number) => void;
+  recheckModeActive: boolean;
+  setRecheckModeActive: (active: boolean) => void;
+  refreshFromLocalStorage: () => void;
 }
 
 // Create context
@@ -45,15 +48,19 @@ const STORAGE_KEY_INDEX = 'easyVat_currentIndex';
 export function InvoiceSessionProvider({ children }: { children: ReactNode }) {
   const [sessionBills, setSessionBills] = useState<BillData[]>([]);
   const [currentIndex, setCurrentIndex] = useState<number>(0);
+  const [recheckModeActive, setRecheckModeActive] = useState<boolean>(false);
 
-  // Load data from localStorage on component mount
-  useEffect(() => {
+  // Function to refresh data from localStorage
+  const refreshFromLocalStorage = () => {
     if (typeof window !== 'undefined') {
       try {
+        console.log('Refreshing session bills from localStorage');
         // Load session bills
         const storedBills = localStorage.getItem(STORAGE_KEY_BILLS);
         if (storedBills) {
-          setSessionBills(JSON.parse(storedBills));
+          const parsedBills = JSON.parse(storedBills);
+          console.log('Loaded bills from localStorage:', parsedBills);
+          setSessionBills(parsedBills);
         }
         
         // Load current index
@@ -62,9 +69,14 @@ export function InvoiceSessionProvider({ children }: { children: ReactNode }) {
           setCurrentIndex(parseInt(storedIndex, 10));
         }
       } catch (error) {
-        console.error('Error loading invoice session from localStorage:', error);
+        console.error('Error refreshing invoice session from localStorage:', error);
       }
     }
+  };
+
+  // Load data from localStorage on component mount
+  useEffect(() => {
+    refreshFromLocalStorage();
   }, []);
 
   const addBill = (bill: BillData) => {
@@ -117,7 +129,10 @@ export function InvoiceSessionProvider({ children }: { children: ReactNode }) {
         removeBill,
         clearSession,
         currentIndex,
-        setCurrentIndex: updateCurrentIndex
+        setCurrentIndex: updateCurrentIndex,
+        recheckModeActive,
+        setRecheckModeActive,
+        refreshFromLocalStorage
       }}
     >
       {children}
