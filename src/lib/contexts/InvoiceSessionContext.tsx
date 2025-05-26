@@ -9,6 +9,8 @@ export interface ExtractedBillData {
   rate: string;
   volume: string;
   amount: string;
+  date: string;
+  needsReview?: boolean;
   fuelType?: string;
   fuelTypeName?: string;
 }
@@ -19,6 +21,8 @@ export interface BillData {
     rate: string;
     volume: string;
     amount: string;
+    date: string;
+    needsReview?: boolean;
     fuelType?: string;
     fuelTypeName?: string;
   };

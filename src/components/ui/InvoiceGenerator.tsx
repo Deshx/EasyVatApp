@@ -69,7 +69,7 @@ export default function InvoiceGenerator({
   const router = useRouter();
   const { user } = useAuth();
   const { fuelPrices } = useFuelPrices();
-  const { sessionBills, refreshFromLocalStorage, sessionId } = useInvoiceSession();
+  const { sessionBills, refreshFromLocalStorage, sessionId, clearSession } = useInvoiceSession();
   const [loading, setLoading] = useState(false);
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
   const [processing, setProcessing] = useState(false);
@@ -187,7 +187,7 @@ export default function InvoiceGenerator({
           const invoiceItems = calculateInvoiceItems(fuelTypeGroups);
           const invoiceTotals = calculateInvoiceTotals(invoiceItems);
           
-          setInvoiceData(prev => ({
+          setInvoiceData((prev: any) => ({
             ...prev,
             items: invoiceItems,
             subTotal: invoiceTotals.subTotal,
@@ -339,6 +339,8 @@ export default function InvoiceGenerator({
           rate: bill.extractedData.rate,
           volume: bill.extractedData.volume,
           amount: bill.extractedData.amount,
+          date: bill.extractedData.date,
+          needsReview: bill.extractedData.needsReview,
           fuelType: bill.extractedData.fuelType,
           fuelTypeName: bill.extractedData.fuelTypeName
         }))
@@ -466,11 +468,30 @@ export default function InvoiceGenerator({
     onPreviewStateChange?.(false);
   };
   
+  // Function to handle new session
+  const handleNewSession = () => {
+    if (window.confirm("Are you sure you want to start a new session? This will delete the current session and all bills.")) {
+      // Clear the current session
+      clearSession();
+      
+      // Navigate back to create-invoice (without sessionId)
+      router.push("/create-invoice");
+    }
+  };
+
   // Show intermediate preview screen
   if (showIntermediate && invoiceData) {
     return (
       <div className="bg-white rounded-lg border border-gray-200 p-4">
-        <h3 className="text-lg font-semibold mb-4">Invoice Preview</h3>
+        <div className="flex justify-between items-center mb-4">
+          <h3 className="text-lg font-semibold">Invoice Preview</h3>
+          <button
+            onClick={handleNewSession}
+            className="px-3 py-1 bg-red-600 text-white text-sm rounded-md hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-500"
+          >
+            New Session
+          </button>
+        </div>
         
         <div className="mb-4">
           <p><span className="font-medium">Company:</span> {invoiceData.companyName}</p>

@@ -71,6 +71,28 @@ export default function RecheckBills() {
       return "This field is required";
     }
     
+    // Date validation
+    if (field === 'date') {
+      const datePattern = /^\d{2}-\d{2}-\d{2}$/;
+      if (!datePattern.test(value)) {
+        return "Date must be in DD-MM-YY format";
+      }
+      
+      // Validate the actual date
+      const [day, month, year] = value.split('-').map(Number);
+      const currentYear = new Date().getFullYear();
+      const century = Math.floor(currentYear / 100) * 100;
+      const fullYear = century + year;
+      
+      const date = new Date(fullYear, month - 1, day);
+      if (date.getDate() !== day || date.getMonth() !== month - 1 || date.getFullYear() !== fullYear) {
+        return "Invalid date";
+      }
+      
+      return null;
+    }
+    
+    // Number validation for other fields
     const numValue = parseFloat(value);
     if (isNaN(numValue)) {
       return "Must be a valid number";
@@ -269,6 +291,8 @@ export default function RecheckBills() {
   const rate = currentBill?.extractedData?.rate || '';
   const volume = currentBill?.extractedData?.volume || '';
   const amount = currentBill?.extractedData?.amount || '';
+  const date = currentBill?.extractedData?.date || '';
+  const needsReview = currentBill?.extractedData?.needsReview || false;
   const fuelType = currentBill?.extractedData?.fuelType || '';
   const imageSrc = currentBill?.imageSrc || '';
 
@@ -353,6 +377,33 @@ export default function RecheckBills() {
                         />
                         {fieldErrors.amount && (
                           <p className="mt-1 text-sm text-red-600">{fieldErrors.amount}</p>
+                        )}
+                      </div>
+                      
+                      {/* Date field */}
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                          Date (DD-MM-YY):
+                          {needsReview && (
+                            <span className="ml-2 text-xs text-amber-600 bg-amber-100 px-2 py-1 rounded">
+                              Needs Review
+                            </span>
+                          )}
+                        </label>
+                        <input
+                          type="text"
+                          value={date}
+                          onChange={(e) => handleFieldChange('date', e.target.value)}
+                          placeholder="DD-MM-YY"
+                          className={`w-full p-2 border rounded-md ${fieldErrors.date ? 'border-red-500' : needsReview ? 'border-amber-300 bg-amber-50' : 'border-gray-300'}`}
+                        />
+                        {fieldErrors.date && (
+                          <p className="mt-1 text-sm text-red-600">{fieldErrors.date}</p>
+                        )}
+                        {needsReview && !fieldErrors.date && (
+                          <p className="mt-1 text-sm text-amber-600">
+                            Date could not be parsed from receipt. Please verify this date is correct.
+                          </p>
                         )}
                       </div>
                       

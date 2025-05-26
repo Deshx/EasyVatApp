@@ -12,6 +12,8 @@ interface ExtractedData {
   rate: string;
   volume: string;
   amount: string;
+  date: string;
+  needsReview?: boolean;
   fuelType?: string;
   fuelTypeName?: string;
 }
@@ -63,7 +65,9 @@ export default function ImagePreview({ imageSrc, onRetake, onNext, onComplete }:
           const extractedData: ExtractedData = {
             rate: data.rate,
             volume: data.volume,
-            amount: data.price
+            amount: data.price,
+            date: data.date || '',
+            needsReview: data.needsReview || false
           };
           
           // Detect fuel type based on rate
@@ -90,7 +94,9 @@ export default function ImagePreview({ imageSrc, onRetake, onNext, onComplete }:
         const fallbackData: ExtractedData = {
           rate: "274.00",
           volume: "3.65",
-          amount: "1000.00"
+          amount: "1000.00",
+          date: new Date().toLocaleDateString('en-GB', { day: '2-digit', month: '2-digit', year: '2-digit' }).replace(/\//g, '-'),
+          needsReview: true
         };
         
         // Detect fuel type based on fallback rate
@@ -125,7 +131,28 @@ export default function ImagePreview({ imageSrc, onRetake, onNext, onComplete }:
       return "This field is required";
     }
     
-    // Number validation
+    // Date validation
+    if (field === 'date') {
+      const datePattern = /^\d{2}-\d{2}-\d{2}$/;
+      if (!datePattern.test(value)) {
+        return "Date must be in DD-MM-YY format";
+      }
+      
+      // Validate the actual date
+      const [day, month, year] = value.split('-').map(Number);
+      const currentYear = new Date().getFullYear();
+      const century = Math.floor(currentYear / 100) * 100;
+      const fullYear = century + year;
+      
+      const date = new Date(fullYear, month - 1, day);
+      if (date.getDate() !== day || date.getMonth() !== month - 1 || date.getFullYear() !== fullYear) {
+        return "Invalid date";
+      }
+      
+      return null;
+    }
+    
+    // Number validation for other fields
     const numValue = parseFloat(value);
     if (isNaN(numValue)) {
       return "Must be a valid number";
@@ -198,7 +225,7 @@ export default function ImagePreview({ imageSrc, onRetake, onNext, onComplete }:
     let hasErrors = false;
     
     Object.entries(extractedData).forEach(([field, value]) => {
-      if (field === 'fuelType' || field === 'fuelTypeName') return; // Skip optional fields
+      if (field === 'fuelType' || field === 'fuelTypeName' || field === 'needsReview') return; // Skip optional fields
       
       const fieldError = validateField(field, value as string);
       if (fieldError) {
@@ -223,7 +250,7 @@ export default function ImagePreview({ imageSrc, onRetake, onNext, onComplete }:
     let hasErrors = false;
     
     Object.entries(extractedData).forEach(([field, value]) => {
-      if (field === 'fuelType' || field === 'fuelTypeName') return; // Skip optional fields
+      if (field === 'fuelType' || field === 'fuelTypeName' || field === 'needsReview') return; // Skip optional fields
       
       const fieldError = validateField(field, value as string);
       if (fieldError) {
@@ -344,6 +371,33 @@ export default function ImagePreview({ imageSrc, onRetake, onNext, onComplete }:
                       />
                       {fieldErrors.amount && (
                         <p className="mt-1 text-sm text-red-600">{fieldErrors.amount}</p>
+                      )}
+                    </div>
+                    
+                    {/* Date field */}
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        Date (DD-MM-YY):
+                        {extractedData.needsReview && (
+                          <span className="ml-2 text-xs text-amber-600 bg-amber-100 px-2 py-1 rounded">
+                            Needs Review
+                          </span>
+                        )}
+                      </label>
+                      <input
+                        type="text"
+                        value={extractedData.date}
+                        onChange={(e) => handleFieldChange('date', e.target.value)}
+                        placeholder="DD-MM-YY"
+                        className={`w-full p-2 border rounded-md ${fieldErrors.date ? 'border-red-500' : extractedData.needsReview ? 'border-amber-300 bg-amber-50' : 'border-gray-300'}`}
+                      />
+                      {fieldErrors.date && (
+                        <p className="mt-1 text-sm text-red-600">{fieldErrors.date}</p>
+                      )}
+                      {extractedData.needsReview && !fieldErrors.date && (
+                        <p className="mt-1 text-sm text-amber-600">
+                          Date could not be parsed from receipt. Please verify this date is correct.
+                        </p>
                       )}
                     </div>
                     
