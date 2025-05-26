@@ -479,6 +479,15 @@ export default function InvoiceGenerator({
     }
   };
 
+  // Extract fuel type name without price per litre
+  const getFuelTypeDisplayName = (item: InvoiceItem) => {
+    if (item.fuelTypeName) {
+      // Remove the price per litre part (e.g., "(Rs. 341/L)")
+      return item.fuelTypeName.replace(/\s*\(Rs\.\s*[\d.]+\/L\)\s*$/, '').trim();
+    }
+    return item.fuelType || "Unknown Fuel Type";
+  };
+
   // Show intermediate preview screen
   if (showIntermediate && invoiceData) {
     return (
@@ -514,7 +523,7 @@ export default function InvoiceGenerator({
               <tbody>
                 {invoiceData.items.map((item: InvoiceItem, index: number) => (
                   <tr key={index} className="border-b">
-                    <td className="py-2">{item.fuelTypeName}</td>
+                    <td className="py-2">{getFuelTypeDisplayName(item)}</td>
                     <td className="py-2 text-right">{item.quantityLitres.toFixed(2)}</td>
                     <td className="py-2 text-right">{item.marketRate.toFixed(2)}</td>
                     <td className="py-2 text-right">{item.amount.toFixed(2)}</td>

@@ -126,20 +126,24 @@ export default function InvoicePage({ params }: { params: { id: string } }) {
   };
   
   return (
-    <main className="min-h-screen p-4 md:p-8 bg-gray-50">
-      <div className="max-w-4xl mx-auto print:max-w-full">
-        <div className="flex justify-between items-center mb-6 print:hidden">
-          <h1 className="text-2xl md:text-3xl font-bold">Invoice</h1>
-          <div className="space-x-2">
-            <Link 
-              href="/dashboard" 
-              className="inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md shadow-sm text-gray-700 bg-white hover:bg-gray-50"
-            >
-              Back
-            </Link>
+    <main className="min-h-screen bg-gray-50">
+      <div className="print:hidden p-4 md:p-8">
+        <div className="max-w-6xl mx-auto">
+          <div className="flex justify-between items-center mb-6">
+            <h1 className="text-2xl md:text-3xl font-bold">Invoice</h1>
+            <div className="space-x-2">
+              <Link 
+                href="/dashboard" 
+                className="inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md shadow-sm text-gray-700 bg-white hover:bg-gray-50"
+              >
+                Back
+              </Link>
+            </div>
           </div>
         </div>
-        
+      </div>
+      
+      <div className="flex justify-center">
         <InvoicePreview
           invoiceId={invoice.id}
           invoiceDate={invoice.invoiceDate}

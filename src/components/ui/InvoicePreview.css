@@ -1,0 +1,71 @@
+/* Invoice Preview Styles */
+.invoice-printable {
+  background: white;
+  font-family: Arial, sans-serif;
+}
+
+/* Print Styles */
+@media print {
+  @page {
+    size: A4;
+    margin: 2cm;
+  }
+  
+  body * {
+    visibility: hidden;
+  }
+  
+  .invoice-printable,
+  .invoice-printable * {
+    visibility: visible;
+  }
+  
+  .invoice-printable {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 100% !important;
+    height: 100% !important;
+    background: white !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    box-shadow: none !important;
+    border-radius: 0 !important;
+    min-height: auto !important;
+  }
+  
+  .print-hidden {
+    display: none !important;
+  }
+  
+  /* Ensure proper spacing in print */
+  .invoice-printable .text-3xl {
+    font-size: 1.875rem !important;
+  }
+  
+  .invoice-printable .text-base {
+    font-size: 1rem !important;
+  }
+  
+  .invoice-printable .mb-8 {
+    margin-bottom: 2rem !important;
+  }
+  
+  .invoice-printable .py-3 {
+    padding-top: 0.75rem !important;
+    padding-bottom: 0.75rem !important;
+  }
+  
+  .invoice-printable .py-4 {
+    padding-top: 1rem !important;
+    padding-bottom: 1rem !important;
+  }
+  
+  .invoice-printable .mt-8 {
+    margin-top: 2rem !important;
+  }
+  
+  .invoice-printable .pt-2 {
+    padding-top: 0.5rem !important;
+  }
+} 

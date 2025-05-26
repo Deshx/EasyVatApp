@@ -1,4 +1,5 @@
 import React from 'react';
+import './InvoicePreview.css';
 
 interface InvoiceItem {
   fuelType: string;
@@ -53,72 +54,90 @@ export default function InvoicePreview({
   const formatNumber = (num: number) => {
     return num.toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ',');
   };
+
+  // Extract fuel type name without price per litre
+  const getFuelTypeDisplayName = (item: InvoiceItem) => {
+    if (item.fuelTypeName) {
+      // Remove the price per litre part (e.g., "(Rs. 341/L)")
+      return item.fuelTypeName.replace(/\s*\(Rs\.\s*[\d.]+\/L\)\s*$/, '').trim();
+    }
+    return item.fuelType || "Unknown Fuel Type";
+  };
   
   return (
-    <div className="bg-white rounded-lg shadow-md p-6 max-w-4xl mx-auto">
-      <div className="print:block" id="invoice-printable">
+    <div className="bg-white rounded-lg shadow-md max-w-4xl mx-auto">
+      {/* A4 sized container with proper padding and centering */}
+      <div 
+        className="invoice-printable bg-white mx-auto"
+        style={{
+          width: '210mm',
+          minHeight: '297mm',
+          padding: '20mm',
+          boxSizing: 'border-box'
+        }}
+      >
         {/* Header */}
-        <div className="text-center mb-6">
-          <h1 className="text-2xl font-bold">{stationName}</h1>
-          <p className="text-sm">{stationAddress}</p>
-          <p className="text-sm">Tel: {stationPhone} | {stationEmail}</p>
-          <p className="text-sm">VAT No: {stationVatNumber}</p>
+        <div className="text-center mb-8">
+          <h1 className="text-3xl font-bold mb-2">{stationName}</h1>
+          <p className="text-base mb-1">{stationAddress}</p>
+          <p className="text-base mb-1">Tel: {stationPhone} | {stationEmail}</p>
+          <p className="text-base">VAT No: {stationVatNumber}</p>
         </div>
         
         {/* Invoice Info */}
-        <div className="flex justify-between mb-6">
+        <div className="flex justify-between mb-8">
           <div>
-            <p><span className="font-semibold">Invoice ID:</span> {invoiceId}</p>
-            <p><span className="font-semibold">Date:</span> {formattedDate}</p>
+            <p className="text-base"><span className="font-semibold">Invoice ID:</span> {invoiceId}</p>
+            <p className="text-base"><span className="font-semibold">Date:</span> {formattedDate}</p>
           </div>
           <div className="text-right">
-            <p><span className="font-semibold">Bill To:</span> {companyName}</p>
-            <p><span className="font-semibold">VAT No:</span> {companyVatNumber}</p>
+            <p className="text-base"><span className="font-semibold">Bill To:</span> {companyName}</p>
+            <p className="text-base"><span className="font-semibold">VAT No:</span> {companyVatNumber}</p>
           </div>
         </div>
         
-        {/* Table header - exact style from image */}
+        {/* Table header */}
         <div>
-          <div className="grid grid-cols-4 py-2 border-t border-b border-gray-300">
-            <div className="font-semibold">Fuel Type</div>
-            <div className="text-right font-semibold">Qty (L)</div>
-            <div className="text-right font-semibold">Rate ex-VAT</div>
-            <div className="text-right font-semibold">Amount ex-VAT</div>
+          <div className="grid grid-cols-4 py-3 border-t-2 border-b-2 border-gray-800">
+            <div className="font-semibold text-base">Fuel Type</div>
+            <div className="text-right font-semibold text-base">Qty (L)</div>
+            <div className="text-right font-semibold text-base">Rate ex-VAT</div>
+            <div className="text-right font-semibold text-base">Amount ex-VAT</div>
           </div>
         </div>
         
         {/* Invoice Items */}
         <div>
           {items.map((item, index) => (
-            <div key={index} className="grid grid-cols-4 py-3 border-b border-gray-100">
-              <div>{item.fuelTypeName || item.fuelType || "Unknown Fuel Type"}</div>
-              <div className="text-right">{formatNumber(item.quantityLitres)}</div>
-              <div className="text-right">{formatNumber(item.marketRate)}</div>
-              <div className="text-right">{formatNumber(item.amount)}</div>
+            <div key={index} className="grid grid-cols-4 py-4 border-b border-gray-200">
+              <div className="text-base">{getFuelTypeDisplayName(item)}</div>
+              <div className="text-right text-base">{formatNumber(item.quantityLitres)}</div>
+              <div className="text-right text-base">{formatNumber(item.marketRate)}</div>
+              <div className="text-right text-base">{formatNumber(item.amount)}</div>
             </div>
           ))}
         </div>
         
-        {/* Totals - exactly like the image */}
-        <div className="mt-6">
+        {/* Totals */}
+        <div className="mt-8">
           <div className="grid grid-cols-2">
             <div></div>
-            <div className="grid grid-cols-2 gap-2">
-              <div className="text-right font-semibold">Sub-total:</div>
-              <div className="text-right">{formatNumber(subTotal)}</div>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="text-right font-semibold text-base">Sub-total:</div>
+              <div className="text-right text-base">{formatNumber(subTotal)}</div>
               
-              <div className="text-right font-semibold">VAT 18%:</div>
-              <div className="text-right">{formatNumber(vat18)}</div>
+              <div className="text-right font-semibold text-base">VAT 18%:</div>
+              <div className="text-right text-base">{formatNumber(vat18)}</div>
               
-              <div className="text-right font-semibold border-t border-gray-300 pt-1">Total:</div>
-              <div className="text-right font-bold border-t border-gray-300 pt-1">{formatNumber(total)}</div>
+              <div className="text-right font-semibold text-base border-t-2 border-gray-800 pt-2">Total:</div>
+              <div className="text-right font-bold text-base border-t-2 border-gray-800 pt-2">{formatNumber(total)}</div>
             </div>
           </div>
         </div>
       </div>
       
       {/* Action Buttons - not printed */}
-      <div className="print:hidden mt-8 flex justify-end">
+      <div className="print-hidden p-6 flex justify-end">
         {onPrint && (
           <button
             onClick={onPrint}
