@@ -1,10 +1,9 @@
 "use client";
 
 import React, { createContext, useContext, useEffect, useState } from 'react';
-import { collection, getDocs } from 'firebase/firestore';
-import { db } from '@/lib/firebase/firebase';
+import { useFuelPriceHistory } from './FuelPriceHistoryContext';
 
-// Define the structure of a fuel price
+// Define the structure of a fuel price (keeping backward compatibility)
 export interface FuelPrice {
   id?: string;
   name: string;
@@ -38,38 +37,51 @@ export function FuelPricesProvider({ children }: { children: React.ReactNode }) 
   const [fuelPrices, setFuelPrices] = useState<FuelPrice[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  
+  // Get current prices from the history context
+  const { getCurrentPrices, loading: historyLoading, error: historyError } = useFuelPriceHistory();
 
-  // Function to fetch fuel prices from Firestore
+  // Function to convert history prices to legacy format
+  const convertHistoryToLegacyFormat = () => {
+    try {
+      const currentPrices = getCurrentPrices();
+      const legacyPrices: FuelPrice[] = currentPrices.map(historyEntry => ({
+        id: historyEntry.id,
+        name: historyEntry.fuelType,
+        price: historyEntry.price.toString(),
+        updatedAt: historyEntry.updatedAt?.toISOString() || historyEntry.createdAt.toISOString()
+      }));
+      
+      setFuelPrices(legacyPrices);
+      setError(null);
+      
+      // Save to localStorage for offline use
+      if (typeof window !== 'undefined' && legacyPrices.length > 0) {
+        localStorage.setItem(STORAGE_KEY_FUEL_PRICES, JSON.stringify(legacyPrices));
+      }
+    } catch (err) {
+      console.error("Error converting fuel prices:", err);
+      setError("Failed to load fuel prices data");
+    }
+  };
+
+  // Function to fetch fuel prices (now uses history data)
   const fetchFuelPrices = async () => {
     setLoading(true);
     setError(null);
+    
     try {
-      // Try to load from localStorage first
+      // Try to load from localStorage first for offline support
       if (typeof window !== 'undefined') {
         const cachedPrices = localStorage.getItem(STORAGE_KEY_FUEL_PRICES);
         if (cachedPrices) {
           const parsedPrices = JSON.parse(cachedPrices);
           setFuelPrices(parsedPrices);
-          setLoading(false);
-          return;
         }
       }
       
-      // If not in localStorage, fetch from Firestore
-      const fuelPricesCollection = collection(db, "fuelPrices");
-      const snapshot = await getDocs(fuelPricesCollection);
-      
-      const prices: FuelPrice[] = [];
-      snapshot.forEach(doc => {
-        prices.push({ id: doc.id, ...doc.data() } as FuelPrice);
-      });
-      
-      // Save to localStorage for offline use
-      if (typeof window !== 'undefined' && prices.length > 0) {
-        localStorage.setItem(STORAGE_KEY_FUEL_PRICES, JSON.stringify(prices));
-      }
-      
-      setFuelPrices(prices);
+      // Convert current history prices to legacy format
+      convertHistoryToLegacyFormat();
     } catch (err) {
       console.error("Error fetching fuel prices:", err);
       setError("Failed to load fuel prices data");
@@ -91,6 +103,21 @@ export function FuelPricesProvider({ children }: { children: React.ReactNode }) 
     
     return undefined;
   };
+
+  // Update when history data changes
+  useEffect(() => {
+    if (!historyLoading) {
+      convertHistoryToLegacyFormat();
+      setLoading(false);
+    }
+  }, [historyLoading, getCurrentPrices]);
+
+  // Set error from history context
+  useEffect(() => {
+    if (historyError) {
+      setError(historyError);
+    }
+  }, [historyError]);
 
   // Initial fetch on component mount
   useEffect(() => {
@@ -119,4 +146,4 @@ export function useFuelPrices() {
     throw new Error("useFuelPrices must be used within a FuelPricesProvider");
   }
   return context;
-} 
+}

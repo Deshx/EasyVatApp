@@ -25,6 +25,9 @@ export interface BillData {
     needsReview?: boolean;
     fuelType?: string;
     fuelTypeName?: string;
+    productText?: string;
+    confidence?: 'high' | 'medium' | 'low' | 'flagged';
+    resolutionMethod?: 'price-date-match' | 'product-text-match' | 'manual-review';
   };
 }
 

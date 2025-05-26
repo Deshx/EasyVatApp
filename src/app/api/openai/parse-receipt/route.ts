@@ -218,13 +218,15 @@ export async function POST(req: Request) {
         2. rate - the price per liter (look for "Rate(Rs/L)" or similar)
         3. price - the total amount paid (look for "Amount(Rs)" or similar)
         4. date - the transaction date (look for any date on the receipt in any format)
+        5. productText - any text that might indicate the fuel type (e.g., "Petrol 95", "Diesel", "Super", "Unleaded", etc.)
 
-        Format your response STRICTLY as a JSON object with these four fields:
+        Format your response STRICTLY as a JSON object with these five fields:
         {
           "volume": "extracted volume value (numbers only, no leading zeros)",
           "rate": "extracted rate value (preserve decimal places)",
           "price": "extracted price value (numbers only, no leading zeros)",
-          "date": "extracted date in any format found on receipt, or empty string if not found"
+          "date": "extracted date in any format found on receipt, or empty string if not found",
+          "productText": "any text mentioning fuel type or product name, or empty string if not found"
         }
         
         Return only valid JSON, no explanations or additional text.
@@ -269,6 +271,7 @@ export async function POST(req: Request) {
           rate: jsonResult.rate,
           price: cleanValue(jsonResult.price),
           date: normalizedDate,
+          productText: jsonResult.productText || '',
           needsReview
         };
         

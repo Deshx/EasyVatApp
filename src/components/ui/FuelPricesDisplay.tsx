@@ -1,9 +1,12 @@
 "use client";
 
-import { useFuelPrices } from '@/lib/contexts/FuelPricesContext';
+import { useFuelPriceHistory } from '@/lib/contexts/FuelPriceHistoryContext';
 
 export function FuelPricesDisplay() {
-  const { fuelPrices, loading, error } = useFuelPrices();
+  const { priceHistory, loading, error } = useFuelPriceHistory();
+  
+  // Filter to get only currently active prices
+  const activePrices = priceHistory.filter(entry => entry.isActive);
   
   if (loading) {
     return (
@@ -27,7 +30,7 @@ export function FuelPricesDisplay() {
     );
   }
   
-  if (fuelPrices.length === 0) {
+  if (activePrices.length === 0) {
     return (
       <div className="bg-white p-4 rounded-lg shadow-md">
         <h2 className="text-lg font-medium mb-2">Current Fuel Prices</h2>
@@ -40,15 +43,17 @@ export function FuelPricesDisplay() {
     <div className="bg-white p-4 rounded-lg shadow-md">
       <h2 className="text-lg font-medium mb-3">Current Fuel Prices</h2>
       <div className="grid grid-cols-2 gap-2">
-        {fuelPrices.map(fuel => (
+        {activePrices.map(fuel => (
           <div key={fuel.id} className="bg-gray-50 p-3 rounded-md">
-            <div className="text-sm font-medium">{fuel.name}</div>
+            <div className="text-sm font-medium">{fuel.fuelType}</div>
             <div className="text-lg font-semibold">Rs. {fuel.price}/L</div>
-            {fuel.updatedAt && (
-              <div className="text-xs text-gray-500 mt-1">
-                Updated: {new Date(fuel.updatedAt).toLocaleDateString()}
-              </div>
-            )}
+            <div className="text-xs text-gray-500 mt-1">
+              Since: {fuel.startDate.toLocaleDateString('en-GB', { 
+                day: '2-digit', 
+                month: '2-digit', 
+                year: '2-digit' 
+              })}
+            </div>
           </div>
         ))}
       </div>
