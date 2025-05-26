@@ -70,12 +70,12 @@ export default function InvoiceGenerator({
   const { user } = useAuth();
   const { fuelPrices } = useFuelPrices();
   const { sessionBills, refreshFromLocalStorage, sessionId, clearSession } = useInvoiceSession();
-  const [loading, setLoading] = useState(false);
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
-  const [processing, setProcessing] = useState(false);
   const [fuelTypes, setFuelTypes] = useState<{[key: string]: string}>({});
   const [showIntermediate, setShowIntermediate] = useState(false);
   const [invoiceData, setInvoiceData] = useState<any>(null);
+  const [creating, setCreating] = useState(false);
+
   
   // Use sessionBills from context (which includes updates from localStorage) instead of the bills prop
   const currentBills = sessionBills.length > 0 ? sessionBills : bills;
@@ -280,8 +280,10 @@ export default function InvoiceGenerator({
       return;
     }
 
+    if (creating) return; // Prevent multiple clicks
+
     try {
-      setProcessing(true);
+      setCreating(true);
       
       // If we don't have a user profile or fuel types yet, fetch them now
       let profile = userProfile;
@@ -300,16 +302,15 @@ export default function InvoiceGenerator({
         setFuelTypes(typesMap);
       }
       
-      // If we already have invoice data from preview, use it
-      let finalInvoiceData = invoiceData;
+      // Use invoice data from preview, or generate it now
+      let preparedInvoiceData = invoiceData;
       
-      // If not, generate it now
-      if (!finalInvoiceData) {
+      if (!preparedInvoiceData) {
         const fuelTypeGroups = groupBillsByFuelType(currentBills);
         const invoiceItems = calculateInvoiceItems(fuelTypeGroups);
         const invoiceTotals = calculateInvoiceTotals(invoiceItems);
         
-        finalInvoiceData = {
+        preparedInvoiceData = {
           userId: user.uid,
           companyName,
           companyVatNumber,
@@ -323,7 +324,7 @@ export default function InvoiceGenerator({
       
       // Add necessary fields for Firebase
       const firebaseInvoiceData = {
-        ...finalInvoiceData,
+        ...preparedInvoiceData,
         createdAt: serverTimestamp(),
         status: "issued",
         userProfile: {
@@ -346,18 +347,17 @@ export default function InvoiceGenerator({
         }))
       };
       
-      // Save to Firestore
-      const invoiceRef = await addDoc(collection(db, "invoices"), firebaseInvoiceData);
+      // Save to Firestore to get the invoice ID and navigate immediately
+      const invoiceDocRef = await addDoc(collection(db, "invoices"), firebaseInvoiceData);
+      const actualInvoiceId = invoiceDocRef.id;
       
-      onSuccess(invoiceRef.id);
+      // Navigate to invoice page immediately
+      onSuccess(actualInvoiceId);
       
     } catch (err) {
       console.error("Error creating invoice:", err);
       onError("Failed to create invoice. Please try again.");
-    } finally {
-      setProcessing(false);
-      setShowIntermediate(false);
-      onPreviewStateChange?.(false);
+      setCreating(false);
     }
   };
   
@@ -465,12 +465,19 @@ export default function InvoiceGenerator({
   const cancelPreview = () => {
     setShowIntermediate(false);
     setInvoiceData(null);
+    setCreating(false);
     onPreviewStateChange?.(false);
   };
   
   // Function to handle new session
   const handleNewSession = () => {
     if (window.confirm("Are you sure you want to start a new session? This will delete the current session and all bills.")) {
+      // Clear local states
+      setShowIntermediate(false);
+      setInvoiceData(null);
+      setCreating(false);
+      onPreviewStateChange?.(false);
+      
       // Clear the current session
       clearSession();
       
@@ -502,51 +509,53 @@ export default function InvoiceGenerator({
           </button>
         </div>
         
-        <div className="mb-4">
-          <p><span className="font-medium">Company:</span> {invoiceData.companyName}</p>
-          <p><span className="font-medium">VAT Number:</span> {invoiceData.companyVatNumber}</p>
-          <p><span className="font-medium">Date:</span> {invoiceData.invoiceDate}</p>
-        </div>
-        
-        <div className="mb-4">
-          <h4 className="font-medium mb-2">Items:</h4>
-          <div className="overflow-x-auto">
-            <table className="min-w-full border-collapse">
-              <thead>
-                <tr className="border-b">
-                  <th className="py-2 text-left">Fuel Type</th>
-                  <th className="py-2 text-right">Quantity (L)</th>
-                  <th className="py-2 text-right">Rate (Rs/L)</th>
-                  <th className="py-2 text-right">Amount (Rs)</th>
-                </tr>
-              </thead>
-              <tbody>
-                {invoiceData.items.map((item: InvoiceItem, index: number) => (
-                  <tr key={index} className="border-b">
-                    <td className="py-2">{getFuelTypeDisplayName(item)}</td>
-                    <td className="py-2 text-right">{item.quantityLitres.toFixed(2)}</td>
-                    <td className="py-2 text-right">{item.marketRate.toFixed(2)}</td>
-                    <td className="py-2 text-right">{item.amount.toFixed(2)}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+        <div className="invoice-printable bg-white p-8 border border-gray-200 rounded-lg mb-6">
+          <div className="mb-4">
+            <p><span className="font-medium">Company:</span> {invoiceData.companyName}</p>
+            <p><span className="font-medium">VAT Number:</span> {invoiceData.companyVatNumber}</p>
+            <p><span className="font-medium">Date:</span> {invoiceData.invoiceDate}</p>
           </div>
-        </div>
-        
-        <div className="flex justify-end mb-4">
-          <div className="w-40">
-            <div className="flex justify-between py-1">
-              <span>Subtotal:</span>
-              <span>Rs {invoiceData.subTotal.toFixed(2)}</span>
+          
+          <div className="mb-4">
+            <h4 className="font-medium mb-2">Items:</h4>
+            <div className="overflow-x-auto">
+              <table className="min-w-full border-collapse">
+                <thead>
+                  <tr className="border-b">
+                    <th className="py-2 text-left">Fuel Type</th>
+                    <th className="py-2 text-right">Quantity (L)</th>
+                    <th className="py-2 text-right">Rate (Rs/L)</th>
+                    <th className="py-2 text-right">Amount (Rs)</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {invoiceData.items.map((item: InvoiceItem, index: number) => (
+                    <tr key={index} className="border-b">
+                      <td className="py-2">{getFuelTypeDisplayName(item)}</td>
+                      <td className="py-2 text-right">{item.quantityLitres.toFixed(2)}</td>
+                      <td className="py-2 text-right">{item.marketRate.toFixed(2)}</td>
+                      <td className="py-2 text-right">{item.amount.toFixed(2)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
             </div>
-            <div className="flex justify-between py-1">
-              <span>VAT (18%):</span>
-              <span>Rs {invoiceData.vat18.toFixed(2)}</span>
-            </div>
-            <div className="flex justify-between py-1 font-bold">
-              <span>Total:</span>
-              <span>Rs {invoiceData.total.toFixed(2)}</span>
+          </div>
+          
+          <div className="flex justify-end mb-4">
+            <div className="w-40">
+              <div className="flex justify-between py-1">
+                <span>Subtotal:</span>
+                <span>Rs {invoiceData.subTotal.toFixed(2)}</span>
+              </div>
+              <div className="flex justify-between py-1">
+                <span>VAT (18%):</span>
+                <span>Rs {invoiceData.vat18.toFixed(2)}</span>
+              </div>
+              <div className="flex justify-between py-1 font-bold">
+                <span>Total:</span>
+                <span>Rs {invoiceData.total.toFixed(2)}</span>
+              </div>
             </div>
           </div>
         </div>
@@ -555,7 +564,6 @@ export default function InvoiceGenerator({
           <button
             onClick={cancelPreview}
             className="px-4 py-2 border border-gray-300 text-gray-700 rounded-md hover:bg-gray-50"
-            disabled={processing}
           >
             Back
           </button>
@@ -564,20 +572,22 @@ export default function InvoiceGenerator({
           <button
             onClick={() => router.push(`/recheck-bills/${sessionId}`)}
             className="px-4 py-2 border border-blue-500 text-blue-500 rounded-md hover:bg-blue-50"
-            disabled={processing}
           >
             Recheck
           </button>
            
           <button
             onClick={processInvoice}
-            disabled={processing}
-            className="flex-grow px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 disabled:opacity-50"
+            disabled={creating}
+            className="flex-grow px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            {processing ? (
+            {creating ? (
               <>
-                <span className="animate-spin rounded-full h-4 w-4 border-t-2 border-b-2 border-white mr-2 inline-block"></span>
-                Processing...
+                <svg className="animate-spin -ml-1 mr-3 h-4 w-4 text-white inline" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                </svg>
+                Creating Invoice...
               </>
             ) : (
               "Confirm & Create Invoice"
@@ -592,17 +602,10 @@ export default function InvoiceGenerator({
   return (
     <button
       onClick={handlePreview}
-      disabled={processing || currentBills.length === 0}
+      disabled={currentBills.length === 0}
       className="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 disabled:opacity-50"
     >
-      {processing ? (
-        <>
-          <span className="animate-spin rounded-full h-4 w-4 border-t-2 border-b-2 border-white mr-2"></span>
-          Processing...
-        </>
-      ) : (
-        `Create Invoice with ${currentBills.length} ${currentBills.length === 1 ? 'Bill' : 'Bills'}`
-      )}
+      {`Create Invoice with ${currentBills.length} ${currentBills.length === 1 ? 'Bill' : 'Bills'}`}
     </button>
   );
 } 
