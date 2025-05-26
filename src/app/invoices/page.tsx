@@ -19,6 +19,7 @@ import {
 } from "firebase/firestore";
 import { db } from "@/lib/firebase/firebase";
 import { Search, Eye, ChevronLeft, ChevronRight } from "lucide-react";
+import { DatePicker } from "@/components/ui/date-picker";
 
 interface InvoiceData {
   id: string;
@@ -281,10 +282,10 @@ export default function InvoicesPage() {
 
         {/* Filters and Search */}
         <div className="bg-white rounded-lg shadow-md p-6 mb-6">
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 mb-4">
-            {/* Search by Invoice ID */}
-            <div className="lg:col-span-6">
-              <label htmlFor="search" className="block text-sm font-medium text-gray-700 mb-1">
+          <div className="grid grid-cols-4 gap-4 mb-4">
+            {/* Search Field */}
+            <div className="col-span-2">
+              <label htmlFor="search" className="block text-sm font-medium text-gray-700 mb-2">
                 Search Invoices
               </label>
               <div className="relative">
@@ -302,30 +303,26 @@ export default function InvoicesPage() {
             </div>
             
             {/* Date From */}
-            <div className="lg:col-span-3">
-              <label htmlFor="dateFrom" className="block text-sm font-medium text-gray-700 mb-1">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
                 Date From
               </label>
-              <input
-                type="date"
-                id="dateFrom"
+              <DatePicker
                 value={dateFrom}
-                onChange={(e) => setDateFrom(e.target.value)}
-                className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                onChange={setDateFrom}
+                placeholder="Select start date"
               />
             </div>
             
             {/* Date To */}
-            <div className="lg:col-span-3">
-              <label htmlFor="dateTo" className="block text-sm font-medium text-gray-700 mb-1">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
                 Date To
               </label>
-              <input
-                type="date"
-                id="dateTo"
+              <DatePicker
                 value={dateTo}
-                onChange={(e) => setDateTo(e.target.value)}
-                className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                onChange={setDateTo}
+                placeholder="Select end date"
               />
             </div>
           </div>
