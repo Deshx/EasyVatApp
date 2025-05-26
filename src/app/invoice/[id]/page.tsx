@@ -10,6 +10,7 @@ import html2canvas from 'html2canvas';
 import jsPDF from 'jspdf';
 import Link from "next/link";
 import InvoicePreview from "@/components/ui/InvoicePreview";
+import { Download, MessageCircle, Mail } from "lucide-react";
 
 interface InvoiceItem {
   fuelType: string;
@@ -52,6 +53,7 @@ export default function InvoicePage({ params }: { params: { id: string } }) {
   const [error, setError] = useState<string | null>(null);
   const [pdfGenerating, setPdfGenerating] = useState(false);
   const [pdfGenerated, setPdfGenerated] = useState(false);
+  const [sharingWhatsapp, setSharingWhatsapp] = useState(false);
   const invoiceRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -110,6 +112,40 @@ export default function InvoicePage({ params }: { params: { id: string } }) {
       generatePDF();
     }
   }, [invoice, pdfGenerating, pdfGenerated]);
+
+  const generatePDFBlob = async (): Promise<Blob | null> => {
+    if (!invoice) return null;
+    
+    try {
+      // Find the invoice element
+      const invoiceElement = invoiceRef.current?.querySelector('.invoice-printable');
+      if (!invoiceElement) {
+        console.error("Invoice element not found for PDF generation");
+        return null;
+      }
+      
+      // Generate PDF from the element
+      const canvas = await html2canvas(invoiceElement as HTMLElement, {
+        scale: 2, // Higher scale for better quality
+        useCORS: true,
+        logging: false,
+        backgroundColor: 'white'
+      });
+      
+      const imgData = canvas.toDataURL('image/jpeg', 0.95);
+      const pdf = new jsPDF('p', 'mm', 'a4');
+      const imgWidth = 210; // A4 width in mm
+      const imgHeight = canvas.height * imgWidth / canvas.width;
+      
+      pdf.addImage(imgData, 'JPEG', 0, 0, imgWidth, imgHeight);
+      
+      // Return as blob instead of data URI
+      return pdf.output('blob');
+    } catch (err) {
+      console.error("Error generating PDF blob:", err);
+      return null;
+    }
+  };
 
   const generatePDF = async () => {
     if (!invoice || !user) return;
@@ -211,82 +247,211 @@ export default function InvoicePage({ params }: { params: { id: string } }) {
   };
   
   // Function to handle downloading PDF if available
-  const handleDownloadPdf = () => {
-    if (invoice?.pdfUrl) {
-      console.log("PDF URL:", invoice.pdfUrl);
-      console.log("Attempting to open new tab...");
-      
-      try {
-        // Try window.open first
-        const newWindow = window.open(invoice.pdfUrl, '_blank');
-        console.log("window.open result:", newWindow);
-        
-        // If window.open failed (blocked by popup blocker), try alternative method
-        if (!newWindow || newWindow.closed || typeof newWindow.closed == 'undefined') {
-          console.log("Popup blocked, trying alternative method...");
-          
-          // Create a temporary link and click it
-          const link = document.createElement('a');
-          link.href = invoice.pdfUrl;
-          link.target = '_blank';
-          link.rel = 'noopener noreferrer';
-          document.body.appendChild(link);
-          link.click();
-          document.body.removeChild(link);
-          console.log("Alternative method executed");
-        } else {
-          console.log("New tab opened successfully");
-        }
-      } catch (error) {
-        console.error("Error opening PDF:", error);
-        
-        // Fallback: just navigate to the URL
-        window.location.href = invoice.pdfUrl;
+  const handleDownloadPdf = async () => {
+    // Generate and download PDF directly if no URL available
+    if (!invoice?.pdfUrl) {
+      const blob = await generatePDFBlob();
+      if (blob) {
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = `invoice-${invoice.id}.pdf`;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        URL.revokeObjectURL(url);
       }
-    } else {
-      console.log("No PDF URL available");
     }
   };
-  
+
+  const handleShareWhatsApp = async () => {
+    if (!invoice || sharingWhatsapp) return;
+    
+    try {
+      setSharingWhatsapp(true);
+      
+      // Generate PDF blob for sharing
+      const pdfBlob = await generatePDFBlob();
+      if (!pdfBlob) {
+        throw new Error("Failed to generate PDF");
+      }
+      
+      // Create File object for Web Share API
+      const file = new File([pdfBlob], `invoice-${invoice.id}.pdf`, {
+        type: 'application/pdf'
+      });
+      
+      // Check if Web Share API Level 2 (with files) is supported
+      if (navigator.canShare && navigator.canShare({ files: [file] })) {
+        try {
+          await navigator.share({
+            title: 'VAT Invoice',
+            text: `Invoice #${invoice.id} from ${invoice.userProfile.companyName}`,
+            files: [file]
+          });
+          console.log('PDF shared successfully via Web Share API!');
+          return;
+        } catch (shareError: any) {
+          // User cancelled or share failed, continue to fallback
+          console.log('Web Share API failed, trying fallback:', shareError.message);
+        }
+      }
+      
+      // Fallback: Share PDF URL if available, or upload and get URL
+      let shareUrl = invoice.pdfUrl;
+      
+      if (!shareUrl) {
+        // If no PDF URL exists, we'd need to upload the blob to get a shareable URL
+        // For now, we'll use a text-only share with invoice details
+        const invoiceText = `Invoice #${invoice.id} from ${invoice.userProfile.companyName}
+Date: ${invoice.invoiceDate}
+Total: Rs ${invoice.total.toFixed(2)}
+
+Download PDF: ${window.location.href}`;
+        
+        // Try Web Share API Level 1 (text/URL only)
+        if (navigator.share) {
+          try {
+            await navigator.share({
+              title: 'VAT Invoice',
+              text: invoiceText,
+              url: window.location.href
+            });
+            console.log('Invoice details shared successfully!');
+            return;
+          } catch (shareError) {
+            console.log('Web Share API Level 1 failed, using WhatsApp deep link');
+          }
+        }
+        
+        // Final fallback: WhatsApp deep link
+        const whatsappText = encodeURIComponent(invoiceText);
+        const whatsappUrl = `https://wa.me/?text=${whatsappText}`;
+        window.open(whatsappUrl, '_blank');
+        console.log('Opened WhatsApp deep link');
+        return;
+      }
+      
+      // If PDF URL exists, share it
+      const shareText = `Invoice #${invoice.id} from ${invoice.userProfile.companyName} - ${shareUrl}`;
+      
+      if (navigator.share) {
+        try {
+          await navigator.share({
+            title: 'VAT Invoice',
+            text: `Invoice #${invoice.id} from ${invoice.userProfile.companyName}`,
+            url: shareUrl
+          });
+          console.log('PDF URL shared successfully!');
+          return;
+        } catch (shareError) {
+          console.log('Web Share API failed, using WhatsApp deep link');
+        }
+      }
+      
+      // Final fallback: WhatsApp deep link with PDF URL
+      const whatsappText = encodeURIComponent(shareText);
+      const whatsappUrl = `https://wa.me/?text=${whatsappText}`;
+      window.open(whatsappUrl, '_blank');
+      
+    } catch (error) {
+      console.error("Error sharing to WhatsApp:", error);
+      alert("Failed to share invoice. Please try again.");
+    } finally {
+      setSharingWhatsapp(false);
+    }
+  };
+
+  const handleEmailClient = () => {
+    // Placeholder for email functionality
+    alert("Email functionality coming soon!");
+  };
+
   return (
     <main className="min-h-screen bg-gray-50">
       <div className="print:hidden p-4 md:p-8">
         <div className="max-w-6xl mx-auto">
           <div className="flex justify-between items-center mb-6">
             <h1 className="text-2xl md:text-3xl font-bold">Invoice</h1>
-            <div className="space-x-2">
-              <Link 
-                href="/dashboard" 
-                className="inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md shadow-sm text-gray-700 bg-white hover:bg-gray-50"
+            <Link 
+              href="/dashboard" 
+              className="inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md shadow-sm text-gray-700 bg-white hover:bg-gray-50"
+            >
+              Back
+            </Link>
+          </div>
+
+          {/* Three Big Action Buttons */}
+          <div className="grid grid-cols-3 gap-2 sm:gap-4 mb-8">
+            {/* Download PDF Button */}
+            {invoice.pdfUrl && !pdfGenerating ? (
+              <a
+                href={invoice.pdfUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                download={`invoice-${invoice.id}.pdf`}
+                className="flex flex-col items-center justify-center p-6 bg-blue-600 hover:bg-blue-700 text-white rounded-lg shadow-lg transition-colors duration-200 no-underline"
               >
-                Back
-              </Link>
-              {pdfGenerating && (
-                <button
-                  disabled
-                  className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-gray-400 cursor-not-allowed"
-                >
-                  <svg className="animate-spin -ml-1 mr-3 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                <Download className="h-8 w-8 mb-3" />
+                <span className="text-lg font-semibold">Download Invoice</span>
+                <span className="text-sm opacity-90">Save as PDF</span>
+              </a>
+            ) : (
+              <button
+                onClick={handleDownloadPdf}
+                disabled={pdfGenerating}
+                className="flex flex-col items-center justify-center p-6 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-400 text-white rounded-lg shadow-lg transition-colors duration-200 disabled:cursor-not-allowed"
+              >
+                {pdfGenerating ? (
+                  <>
+                    <svg className="animate-spin h-8 w-8 mb-3" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    </svg>
+                    <span className="text-lg font-semibold">Generating PDF...</span>
+                  </>
+                ) : (
+                  <>
+                    <Download className="h-8 w-8 mb-3" />
+                    <span className="text-lg font-semibold">Download Invoice</span>
+                    <span className="text-sm opacity-90">Save as PDF</span>
+                  </>
+                )}
+              </button>
+            )}
+
+            {/* Share on WhatsApp Button */}
+            <button
+              onClick={handleShareWhatsApp}
+              disabled={sharingWhatsapp || pdfGenerating}
+              className="flex flex-col items-center justify-center p-6 bg-green-600 hover:bg-green-700 disabled:bg-gray-400 text-white rounded-lg shadow-lg transition-colors duration-200 disabled:cursor-not-allowed"
+            >
+              {sharingWhatsapp ? (
+                <>
+                  <svg className="animate-spin h-8 w-8 mb-3" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
                     <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
                     <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                   </svg>
-                  Generating PDF...
-                </button>
+                  <span className="text-lg font-semibold">Sharing...</span>
+                </>
+              ) : (
+                <>
+                  <MessageCircle className="h-8 w-8 mb-3" />
+                  <span className="text-lg font-semibold">Share on WhatsApp</span>
+                  <span className="text-sm opacity-90">Send to client</span>
+                </>
               )}
-              {invoice.pdfUrl && !pdfGenerating && (
-                <a
-                  href={invoice.pdfUrl}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-blue-600 hover:bg-blue-700 no-underline"
-                >
-                  <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                  </svg>
-                  Download PDF
-                </a>
-              )}
-            </div>
+            </button>
+
+            {/* Email to Client Button */}
+            <button
+              onClick={handleEmailClient}
+              className="flex flex-col items-center justify-center p-6 bg-purple-600 hover:bg-purple-700 text-white rounded-lg shadow-lg transition-colors duration-200"
+            >
+              <Mail className="h-8 w-8 mb-3" />
+              <span className="text-lg font-semibold">Email to Client</span>
+              <span className="text-sm opacity-90">Send via email</span>
+            </button>
           </div>
         </div>
       </div>
