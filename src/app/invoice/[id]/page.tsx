@@ -111,15 +111,24 @@ export default function InvoicePage({ params }: { params: { id: string } }) {
     }
   }, [user, loading, params.id, router]);
 
-  // Generate PDF after invoice loads if it doesn't exist
+  // Generate PDF after invoice loads
   useEffect(() => {
-    if (invoice && !invoice.pdfUrl && !pdfGenerating && !pdfGenerated) {
-      generatePDF();
-    } else if (invoice && invoice.pdfUrl && !pdfPreviewBlob) {
-      // If PDF URL exists but no preview blob, generate preview blob
+    if (invoice && !pdfGenerating && !pdfGenerated && !pdfPreviewBlob) {
+      // Always generate fresh preview blob to avoid CORS issues
+      console.log("Generating preview blob for invoice:", invoice.invoiceId || invoice.id);
       generatePDFBlob().then(blob => {
         if (blob) {
+          console.log("Preview blob generated successfully");
           setPdfPreviewBlob(blob);
+          
+          // If no Firebase URL exists, upload to Firebase using the same blob
+          if (!invoice.pdfUrl) {
+            console.log("No Firebase URL exists, uploading PDF...");
+            generatePDF(blob);
+          } else {
+            console.log("Firebase URL exists, skipping upload. Preview blob ready.");
+            setPdfGenerated(true); // Mark as generated since we have the blob for preview
+          }
         }
       });
     }
@@ -329,22 +338,24 @@ export default function InvoicePage({ params }: { params: { id: string } }) {
     }
   };
 
-  const generatePDF = async () => {
+  const generatePDF = async (existingBlob?: Blob) => {
     if (!invoice || !user) return;
     
     try {
       setPdfGenerating(true);
       
-      // Generate PDF blob directly
-      const pdfBlob = await generatePDFBlob();
+      // Use existing blob if provided, otherwise generate new one
+      const pdfBlob = existingBlob || await generatePDFBlob();
       if (!pdfBlob) {
         console.error("Failed to generate PDF blob");
         setPdfGenerating(false);
         return;
       }
       
-      // Set preview blob for immediate viewing
-      setPdfPreviewBlob(pdfBlob);
+      // Set preview blob for immediate viewing if not already set
+      if (!pdfPreviewBlob) {
+        setPdfPreviewBlob(pdfBlob);
+      }
       
       // Convert blob to data URL for Firebase upload
       const reader = new FileReader();

@@ -5,32 +5,10 @@ import { Document, Page, pdfjs } from 'react-pdf';
 import 'react-pdf/dist/Page/AnnotationLayer.css';
 import 'react-pdf/dist/Page/TextLayer.css';
 
-// Polyfill for Promise.withResolvers if not available
-if (typeof Promise.withResolvers === 'undefined') {
-  // @ts-ignore
-  Promise.withResolvers = function() {
-    let resolve, reject;
-    const promise = new Promise((res, rej) => {
-      resolve = res;
-      reject = rej;
-    });
-    return { promise, resolve, reject };
-  };
-}
-
-// Set up the worker with local fallback to avoid CORS issues
+// Set up the worker using local file to avoid CDN issues
 if (typeof window !== 'undefined') {
-  try {
-    // Try local import approach first
-    pdfjs.GlobalWorkerOptions.workerSrc = new URL(
-      'pdfjs-dist/build/pdf.worker.min.mjs',
-      import.meta.url,
-    ).toString();
-  } catch (error) {
-    console.warn('Local worker setup failed, using CDN fallback:', error);
-    // Fallback to legacy CDN approach
-    pdfjs.GlobalWorkerOptions.workerSrc = `//cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjs.version}/pdf.worker.min.mjs`;
-  }
+  // Use local worker file to avoid CORS and network issues
+  pdfjs.GlobalWorkerOptions.workerSrc = '/pdf-worker/pdf.worker.min.mjs';
 }
 
 interface PDFViewerProps {
@@ -46,21 +24,33 @@ export default function PDFViewer({ pdfUrl, pdfBlob, title = "Invoice Preview", 
   const [pageNumber] = useState<number>(1); // Always show page 1 for invoices
   const [pageWidth, setPageWidth] = useState<number>(0);
   const [pdfError, setPdfError] = useState<string | null>(null);
+  const [documentKey, setDocumentKey] = useState<string>('');
 
   useEffect(() => {
+    // Clear any previous errors when props change
+    setPdfError(null);
+    
     if (pdfBlob) {
-      // Create object URL from blob
+      // Always prioritize blob over URL to avoid CORS issues
       const url = URL.createObjectURL(pdfBlob);
       setPreviewUrl(url);
+      // Force re-render of Document component by changing key
+      setDocumentKey(`blob-${Date.now()}`);
       
       // Cleanup function
       return () => {
         URL.revokeObjectURL(url);
       };
-    } else if (pdfUrl) {
-      setPreviewUrl(pdfUrl);
+    } else if (pdfUrl && !loading) {
+      // Skip URL loading to avoid CORS issues in development
+      // Wait for blob generation instead
+      setPreviewUrl(null);
+      setDocumentKey('waiting');
+    } else {
+      setPreviewUrl(null);
+      setDocumentKey('loading');
     }
-  }, [pdfBlob, pdfUrl]);
+  }, [pdfBlob, pdfUrl, loading]);
 
   useEffect(() => {
     // Calculate optimal width based on viewport
@@ -87,7 +77,6 @@ export default function PDFViewer({ pdfUrl, pdfBlob, title = "Invoice Preview", 
   };
 
   const onDocumentLoadError = (error: Error) => {
-    console.error('PDF load error:', error);
     setPdfError('Failed to load PDF. Please try refreshing the page.');
   };
 
@@ -148,12 +137,21 @@ export default function PDFViewer({ pdfUrl, pdfBlob, title = "Invoice Preview", 
         </div>
         <div className="flex items-center justify-center p-8">
           <div className="text-center">
-            <div className="text-gray-400 mb-2">
-              <svg className="w-12 h-12 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-              </svg>
-            </div>
-            <p className="text-gray-600">No PDF available</p>
+            {loading ? (
+              <>
+                <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500 mx-auto mb-4"></div>
+                <p className="text-gray-600">Generating PDF...</p>
+              </>
+            ) : (
+              <>
+                <div className="text-gray-400 mb-2">
+                  <svg className="w-12 h-12 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                  </svg>
+                </div>
+                <p className="text-gray-600">Preparing PDF preview...</p>
+              </>
+            )}
           </div>
         </div>
       </div>
@@ -183,6 +181,7 @@ export default function PDFViewer({ pdfUrl, pdfBlob, title = "Invoice Preview", 
       <div className="relative w-full p-4">
         <div className="flex justify-center">
           <Document
+            key={documentKey}
             file={previewUrl}
             onLoadSuccess={onDocumentLoadSuccess}
             onLoadError={onDocumentLoadError}
