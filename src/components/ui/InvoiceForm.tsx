@@ -21,6 +21,7 @@ import EnhancedImagePreview from "./EnhancedImagePreview";
 import InvoiceGenerator from "./InvoiceGenerator";
 import { useInvoiceSession, BillData } from "@/lib/contexts/InvoiceSessionContext";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { PageContainer } from "@/components/ui/page-container";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -363,44 +364,46 @@ export default function InvoiceForm() {
 
   return (
     <div className="min-h-screen">
-      {/* Mobile Header */}
+      {/* Header */}
       <div className="sticky top-0 z-20 bg-white/95 backdrop-blur-sm border-b border-gray-200">
-        <div className="flex items-center justify-between p-4">
-          <Button 
-            variant="ghost" 
-            size="icon"
-            onClick={handleCancelSession}
-            className="h-10 w-10"
-          >
-            <ArrowLeft className="h-5 w-5" />
-          </Button>
-          
-          <div className="flex-1 text-center">
-            <h1 className="text-lg font-semibold text-gray-900">Create Invoice</h1>
-            {sessionBills.length > 0 && (
-              <p className="text-sm text-gray-500">{sessionBills.length} bills scanned</p>
-            )}
-          </div>
+        <PageContainer size="md">
+          <div className="flex items-center justify-between py-4">
+            <Button 
+              variant="ghost" 
+              size="icon"
+              onClick={handleCancelSession}
+              className="h-10 w-10"
+            >
+              <ArrowLeft className="h-5 w-5" />
+            </Button>
+            
+            <div className="flex-1 text-center">
+              <h1 className="text-lg font-semibold text-gray-900">Create Invoice</h1>
+              {sessionBills.length > 0 && (
+                <p className="text-sm text-gray-500">{sessionBills.length} bills scanned</p>
+              )}
+            </div>
 
-          <Button 
-            variant="ghost" 
-            size="icon"
-            onClick={handleCancelSession}
-            className="h-10 w-10"
-          >
-            <X className="h-5 w-5" />
-          </Button>
-        </div>
+            <Button 
+              variant="ghost" 
+              size="icon"
+              onClick={handleCancelSession}
+              className="h-10 w-10"
+            >
+              <X className="h-5 w-5" />
+            </Button>
+          </div>
+        </PageContainer>
       </div>
 
       {error && (
-        <div className="p-4">
+        <PageContainer size="md" className="py-4">
           <Card className="border-red-200 bg-red-50">
             <CardContent className="p-4">
               <p className="text-red-700 text-sm">{error}</p>
             </CardContent>
           </Card>
-        </div>
+        </PageContainer>
       )}
       
       {showCamera && (
@@ -427,7 +430,7 @@ export default function InvoiceForm() {
       )}
       
       {!showPreview && !showCamera && (
-        <div className="p-4 pb-20">
+        <PageContainer size="md" className="py-4 pb-20">
           {/* Bills in Session */}
           {sessionBills.length > 0 && !recheckModeActive && (
             <div className="mb-6">
@@ -629,7 +632,7 @@ export default function InvoiceForm() {
               />
             </div>
           )}
-        </div>
+        </PageContainer>
       )}
     </div>
   );

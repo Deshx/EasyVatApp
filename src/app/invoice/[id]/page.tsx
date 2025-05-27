@@ -9,6 +9,7 @@ import { ref, uploadString, getDownloadURL } from 'firebase/storage';
 import jsPDF from 'jspdf';
 import Link from "next/link";
 import PDFViewer from "@/components/ui/PDFViewer";
+import { PageContainer } from "@/components/ui/page-container";
 import { Download, MessageCircle, Mail } from "lucide-react";
 import EmailModal from "@/components/ui/EmailModal";
 import { EmailService } from "@/lib/services/emailService";
@@ -402,8 +403,8 @@ export default function InvoicePage({ params }: { params: { id: string } }) {
 
   if (error) {
     return (
-      <div className="min-h-screen p-4 md:p-8 bg-gray-50">
-        <div className="max-w-4xl mx-auto">
+      <div className="min-h-screen bg-gray-50">
+        <PageContainer className="py-4 md:py-8">
           <div className="bg-red-50 border border-red-400 text-red-700 px-4 py-3 rounded-lg mb-6" role="alert">
             <p>{error}</p>
           </div>
@@ -413,7 +414,7 @@ export default function InvoicePage({ params }: { params: { id: string } }) {
           >
             Back to Dashboard
           </Link>
-        </div>
+        </PageContainer>
       </div>
     );
   }
@@ -606,8 +607,8 @@ Download PDF: ${window.location.href}`;
 
   return (
     <main className="min-h-screen bg-gray-50">
-      <div className="print:hidden p-4 md:p-8">
-        <div className="max-w-6xl mx-auto">
+      <div className="print:hidden">
+        <PageContainer size="xl" className="py-4 md:py-8">
           <div className="flex justify-between items-center mb-6">
             <h1 className="text-2xl md:text-3xl font-bold">Invoice</h1>
             <Link 
@@ -690,20 +691,18 @@ Download PDF: ${window.location.href}`;
               <span className="text-xs opacity-90">Send via email</span>
             </button>
           </div>
-        </div>
+        </PageContainer>
       </div>
       
       {/* PDF Viewer Container */}
-      <div className="px-4 md:px-8 pb-8">
-        <div className="max-w-4xl mx-auto">
+      <PageContainer className="pb-8">
           <PDFViewer
             pdfUrl={invoice.pdfUrl}
             pdfBlob={pdfPreviewBlob}
             title={`Invoice ${invoice.invoiceId || invoice.id}`}
             loading={pdfGenerating}
           />
-        </div>
-      </div>
+        </PageContainer>
 
       {/* Email Modal */}
       <EmailModal

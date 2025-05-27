@@ -2,14 +2,15 @@ import Link from "next/link";
 import Image from "next/image";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { PageContainer } from "@/components/ui/page-container";
 import { Receipt, Shield, Zap, FileText, ArrowRight } from "lucide-react";
 
 export default function Home() {
   return (
     <main className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100">
       {/* Hero Section */}
-      <div className="px-4 py-8 sm:py-16">
-        <div className="max-w-4xl mx-auto text-center">
+      <div className="py-8 sm:py-16">
+        <PageContainer className="text-center">
           <h1 className="text-4xl sm:text-5xl md:text-6xl font-bold mb-6 bg-gradient-to-r from-blue-600 to-teal-500 bg-clip-text text-transparent leading-tight">
             Create VAT Invoices Within Seconds
           </h1>
@@ -38,12 +39,11 @@ export default function Home() {
               </Link>
             </Button>
           </div>
-        </div>
+        </PageContainer>
       </div>
       
       {/* Features Section */}
-      <div className="px-4 pb-16">
-        <div className="max-w-5xl mx-auto">
+      <PageContainer size="xl" className="pb-16">
           <div id="features" className="grid grid-cols-1 md:grid-cols-3 gap-6">
             <Card className="hover:shadow-lg transition-all duration-300 border-0 bg-white/80 backdrop-blur-sm">
               <CardContent className="p-6 text-center">
@@ -75,12 +75,10 @@ export default function Home() {
               </CardContent>
             </Card>
           </div>
-        </div>
-      </div>
+        </PageContainer>
 
       {/* How it Works Section */}
-      <div className="px-4 pb-16">
-        <div className="max-w-4xl mx-auto">
+      <PageContainer className="pb-16">
           <h2 className="text-3xl sm:text-4xl font-bold text-center mb-12 text-gray-900">
             How It Works
           </h2>
@@ -124,8 +122,7 @@ export default function Home() {
               </Link>
             </Button>
           </div>
-        </div>
-      </div>
+        </PageContainer>
     </main>
   );
 }

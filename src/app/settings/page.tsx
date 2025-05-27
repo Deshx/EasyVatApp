@@ -5,6 +5,7 @@ import { useAuth } from "@/lib/hooks/useAuth";
 import { useRouter, useSearchParams } from "next/navigation";
 import { StationProfileForm } from "@/components/ui/StationProfileForm";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+import { PageContainer } from "@/components/ui/page-container";
 import { PaymentsTab } from "@/components/ui/PaymentsTab";
 
 export default function Settings() {
@@ -45,8 +46,8 @@ export default function Settings() {
   }
 
   return (
-    <main className="min-h-screen p-4 md:p-8 bg-gray-50">
-      <div className="max-w-xl mx-auto">
+    <main className="min-h-screen bg-gray-50">
+      <PageContainer size="md" className="py-4 md:py-8">
         <div className="mb-6">
           <button 
             onClick={() => router.back()} 
@@ -102,8 +103,7 @@ export default function Settings() {
             </TabsContent>
           </Tabs>
         </div>
-      </div>
-
+      </PageContainer>
     </main>
   );
 } 

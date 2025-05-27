@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { useFuelPriceHistory } from '@/lib/contexts/FuelPriceHistoryContext';
 import { SlipResolver, SlipData, ResolvedSlip } from '@/lib/services/slipResolver';
+import { PageContainer } from "@/components/ui/page-container";
 
 interface EnhancedImagePreviewProps {
   imageSrc: string;
@@ -292,25 +293,27 @@ export default function EnhancedImagePreview({
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100">
-      {/* Mobile Header */}
+      {/* Header */}
       <div className="sticky top-0 z-10 bg-white/95 backdrop-blur-sm border-b border-gray-200">
-        <div className="flex items-center justify-between p-4">
-          <button
-            onClick={onRetake}
-            className="flex items-center gap-2 px-3 py-2 text-gray-600 hover:text-gray-800"
-          >
-            ← Retake
-          </button>
-          
-          <div className="flex-1 text-center">
-            <h1 className="text-lg font-semibold text-gray-900">Review Bill</h1>
-          </div>
+        <PageContainer size="md">
+          <div className="flex items-center justify-between py-4">
+            <button
+              onClick={onRetake}
+              className="flex items-center gap-2 px-3 py-2 text-gray-600 hover:text-gray-800"
+            >
+              ← Retake
+            </button>
+            
+            <div className="flex-1 text-center">
+              <h1 className="text-lg font-semibold text-gray-900">Review Bill</h1>
+            </div>
 
-          <div className="w-20" /> {/* Spacer for centering */}
-        </div>
+            <div className="w-20" /> {/* Spacer for centering */}
+          </div>
+        </PageContainer>
       </div>
 
-      <div className="p-3 pb-20">
+      <PageContainer size="md" className="py-3 pb-20">
         {/* Receipt Image Section - Very Compact */}
         <div className="mb-2">
           {/* Confidence Badge */}
@@ -527,7 +530,7 @@ export default function EnhancedImagePreview({
             )}
           </div>
         </div>
-      </div>
+      </PageContainer>
 
       {/* Fixed Bottom Navigation - Icon Buttons Row */}
       <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 px-4 py-2">

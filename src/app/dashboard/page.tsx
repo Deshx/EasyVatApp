@@ -8,6 +8,7 @@ import { doc, getDoc } from "firebase/firestore";
 import { db } from "@/lib/firebase/firebase";
 import { FuelPricesDisplay } from "@/components/ui/FuelPricesDisplay";
 import { SubscriptionGate } from "@/components/ui/SubscriptionGate";
+import { PageContainer } from "@/components/ui/page-container";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -117,8 +118,9 @@ function DashboardContent({
     <main className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100">
       {/* Header */}
       <div className="sticky top-0 z-10 bg-white/95 backdrop-blur-sm border-b border-gray-200">
-        <div className="px-4 py-4">
-          <div className="flex items-center justify-between">
+        <PageContainer>
+          <div className="py-4">
+            <div className="flex items-center justify-between">
             <div>
               <h1 className="text-2xl font-bold text-gray-900">EasyVat</h1>
               <p className="text-sm text-gray-500">Dashboard</p>
@@ -146,22 +148,24 @@ function DashboardContent({
                 </div>
               </div>
             )}
+            </div>
           </div>
-        </div>
+        </PageContainer>
       </div>
 
-      <div className="p-4 pb-20">
-        {error && (
-          <Card className="mb-6 border-red-200 bg-red-50">
-            <CardContent className="p-4">
-              <p className="text-red-700 text-sm">{error}</p>
-            </CardContent>
-          </Card>
-        )}
+      <div className="pb-20">
+        <PageContainer>
+          {error && (
+            <Card className="mb-6 border-red-200 bg-red-50">
+              <CardContent className="p-4">
+                <p className="text-red-700 text-sm">{error}</p>
+              </CardContent>
+            </Card>
+          )}
 
-        {/* Quick Actions */}
-        <div className="mb-6">
-          <h2 className="text-lg font-semibold text-gray-900 mb-4">Quick Actions</h2>
+          {/* Quick Actions */}
+          <div className="mb-6">
+            <h2 className="text-lg font-semibold text-gray-900 mb-4">Quick Actions</h2>
           <div className="space-y-3">
             {/* Create Invoice - Primary Action */}
             <Card className="bg-gradient-to-r from-blue-600 to-blue-700 border-0 hover:shadow-lg transition-all duration-200">
@@ -294,6 +298,7 @@ function DashboardContent({
             </div>
           </div>
         )}
+        </PageContainer>
       </div>
       
       {/* Fixed Bottom Action */}

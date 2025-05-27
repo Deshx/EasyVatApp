@@ -25,6 +25,7 @@ import { DatePicker } from "@/components/ui/date-picker";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Checkbox } from "@/components/ui/checkbox";
 import { SubscriptionGate } from "@/components/ui/SubscriptionGate";
+import { PageContainer } from "@/components/ui/page-container";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -577,7 +578,7 @@ export default function InvoicesPage() {
       <main className="min-h-screen bg-gray-50">
         {/* Header */}
         <div className="bg-white border-b border-gray-200 sticky top-0 z-10">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <PageContainer size="xl">
             <div className="flex items-center justify-between h-16">
               <div className="flex items-center space-x-4">
                 <Link href="/dashboard">
@@ -617,10 +618,10 @@ export default function InvoicesPage() {
                 </Link>
               </div>
             </div>
-          </div>
+          </PageContainer>
         </div>
 
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+        <PageContainer size="xl" className="py-6">
           {error && (
             <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg">
               <p className="text-red-700 text-sm">{error}</p>
@@ -958,7 +959,7 @@ export default function InvoicesPage() {
               </Button>
             </Link>
           </div>
-        </div>
+        </PageContainer>
       </main>
     </SubscriptionGate>
   );

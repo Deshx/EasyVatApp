@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { PageContainer } from "@/components/ui/page-container";
 import { Button } from "@/components/ui/button";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { ArrowLeft, Loader2, Shield, Zap, FileText } from "lucide-react";
@@ -45,8 +46,9 @@ export default function LoginPage() {
     <main className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100">
       {/* Header */}
       <div className="sticky top-0 z-10 bg-white/95 backdrop-blur-sm border-b border-gray-200">
-        <div className="px-4 py-4">
-          <div className="flex items-center justify-between">
+        <PageContainer size="sm">
+          <div className="py-4">
+            <div className="flex items-center justify-between">
             <Button variant="ghost" size="icon" asChild>
               <Link href="/">
                 <ArrowLeft className="h-5 w-5" />
@@ -54,12 +56,12 @@ export default function LoginPage() {
             </Button>
             <h1 className="text-lg font-semibold text-gray-900">Sign In</h1>
             <div className="w-10" /> {/* Spacer for centering */}
+            </div>
           </div>
-        </div>
+        </PageContainer>
       </div>
 
-      <div className="px-4 py-8">
-        <div className="max-w-md mx-auto">
+      <PageContainer size="sm" className="py-8">
           {/* Welcome Card */}
           <Card className="mb-6 border-0 bg-white/80 backdrop-blur-sm shadow-lg">
             <CardHeader className="text-center pb-4">
@@ -170,8 +172,7 @@ export default function LoginPage() {
               </Link>
             </Button>
           </div>
-        </div>
-      </div>
+        </PageContainer>
     </main>
   );
 }
