@@ -159,11 +159,6 @@ function DashboardContent({
           </Card>
         )}
 
-        {/* Fuel Prices */}
-        <div className="mb-6">
-          <FuelPricesDisplay />
-        </div>
-
         {/* Quick Actions */}
         <div className="mb-6">
           <h2 className="text-lg font-semibold text-gray-900 mb-4">Quick Actions</h2>
@@ -237,6 +232,11 @@ function DashboardContent({
               </CardContent>
             </Card>
           </div>
+        </div>
+
+        {/* Fuel Prices */}
+        <div className="mb-6">
+          <FuelPricesDisplay />
         </div>
 
         {/* Admin Actions */}
