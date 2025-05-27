@@ -66,6 +66,9 @@ export default function InvoicePreview({
   
   return (
     <div className="bg-white rounded-lg shadow-md max-w-4xl mx-auto">
+      {/* Meta tag to disable automatic phone/email detection */}
+      <meta name="format-detection" content="telephone=no, email=no" />
+      
       {/* A4 sized container with proper padding and centering */}
       <div 
         className="invoice-printable bg-white mx-auto"
@@ -80,7 +83,16 @@ export default function InvoicePreview({
         <div className="text-center mb-8">
           <h1 className="text-3xl font-bold mb-2">{stationName}</h1>
           <p className="text-base mb-1">{stationAddress}</p>
-          <p className="text-base mb-1">Tel: {stationPhone} <span style={{textDecoration: 'none'}}>&nbsp;&nbsp;&bull;&nbsp;&nbsp;</span> {stationEmail}</p>
+          <p 
+            className="text-base mb-1" 
+            style={{
+              color: 'inherit',
+              textDecoration: 'none',
+              WebkitTextDecorationLine: 'none'
+            }}
+          >
+            <span style={{textDecoration: 'none', color: 'inherit'}}>Tel: {stationPhone} | {stationEmail}</span>
+          </p>
           <p className="text-base">VAT No: {stationVatNumber}</p>
         </div>
         
