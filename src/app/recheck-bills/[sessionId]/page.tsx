@@ -1,5 +1,6 @@
 "use client";
 
+// Force recompilation - mobile-first design
 import { useState, useEffect } from "react";
 import { useAuth } from "@/lib/hooks/useAuth";
 import { useRouter, useParams } from "next/navigation";
@@ -14,6 +15,30 @@ import {
   DialogDescription 
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Badge } from "@/components/ui/badge";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { 
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { 
+  ChevronLeft, 
+  ChevronRight, 
+  Trash2, 
+  Save, 
+  ArrowLeft, 
+  RotateCcw,
+  Fuel,
+  Calendar,
+  DollarSign,
+  Gauge,
+  AlertTriangle
+} from "lucide-react";
 
 export default function RecheckBills() {
   const { user, loading } = useAuth();
@@ -186,7 +211,7 @@ export default function RecheckBills() {
     if (typeof window !== 'undefined') {
       localStorage.setItem(STORAGE_KEY_BILLS, JSON.stringify(editedBills));
       // Set a flag to indicate we're returning from recheck mode
-      localStorage.setItem(`easyVat_${sessionId}_returnFromRecheck`, 'true');
+      localStorage.setItem(`easyVat_session_returnFromRecheck`, 'true');
     }
     // Navigate back to invoice creation for this session
     router.push(`/create-invoice/${sessionId}`);
@@ -245,7 +270,7 @@ export default function RecheckBills() {
 
   if (loading) {
     return (
-      <div className="flex min-h-screen items-center justify-center">
+      <div className="flex min-h-screen items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-100">
         <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500"></div>
       </div>
     );
@@ -257,16 +282,18 @@ export default function RecheckBills() {
 
   if (sessionBills.length === 0) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="text-center">
-          <p className="mb-4">No bills found to review.</p>
-          <button
-            onClick={() => router.push('/create-invoice')}
-            className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
-          >
-            Create New Session
-          </button>
-        </div>
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-100 p-4">
+        <Card className="text-center max-w-md w-full">
+          <CardContent className="pt-6">
+            <p className="mb-4 text-gray-600">No bills found to review.</p>
+            <Button
+              onClick={() => router.push('/create-invoice')}
+              className="w-full"
+            >
+              Create New Session
+            </Button>
+          </CardContent>
+        </Card>
       </div>
     );
   }
@@ -274,16 +301,18 @@ export default function RecheckBills() {
   const currentBill = editedBills[currentIndex];
   if (!currentBill) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="text-center">
-          <p className="mb-4">Error loading bill data.</p>
-          <button
-            onClick={() => router.push('/create-invoice')}
-            className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
-          >
-            Create New Session
-          </button>
-        </div>
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-100 p-4">
+        <Card className="text-center max-w-md w-full">
+          <CardContent className="pt-6">
+            <p className="mb-4 text-gray-600">Error loading bill data.</p>
+            <Button
+              onClick={() => router.push('/create-invoice')}
+              className="w-full"
+            >
+              Create New Session
+            </Button>
+          </CardContent>
+        </Card>
       </div>
     );
   }
@@ -295,225 +324,273 @@ export default function RecheckBills() {
   const needsReview = currentBill?.extractedData?.needsReview || false;
   const fuelType = currentBill?.extractedData?.fuelType || '';
   const imageSrc = currentBill?.imageSrc || '';
+  const confidence = currentBill?.extractedData?.confidence || 'medium';
+
+  // Get confidence badge variant
+  const getConfidenceBadgeVariant = (conf: string) => {
+    switch (conf) {
+      case 'high': return 'default';
+      case 'medium': return 'secondary';
+      case 'low': return 'outline';
+      case 'flagged': return 'destructive';
+      default: return 'secondary';
+    }
+  };
 
   return (
-    <main className="min-h-screen p-4 md:p-8 bg-gray-50">
-      <div className="max-w-6xl mx-auto">
-        <div className="bg-white rounded-lg shadow-md h-full flex flex-col">
-          <div className="p-4 flex-grow">
-            <div className="flex justify-between items-center mb-4">
-              <h1 className="text-2xl font-bold">Review Bills ({currentIndex + 1}/{sessionBills.length})</h1>
-              <button
-                onClick={() => router.push('/create-invoice')}
-                className="px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700"
-              >
-                Start Over
-              </button>
-            </div>
+    <main className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100">
+      {/* Mobile Header */}
+      <div className="sticky top-0 z-10 bg-white/95 backdrop-blur-sm border-b border-gray-200">
+        <div className="flex items-center justify-between p-4">
+          <Button 
+            variant="ghost" 
+            size="icon"
+            onClick={handleBack}
+            className="h-10 w-10"
+          >
+            <ArrowLeft className="h-5 w-5" />
+          </Button>
+          
+          <div className="flex-1 text-center">
+            <h1 className="text-lg font-semibold text-gray-900">Review Bill</h1>
+            <p className="text-sm text-gray-500">{currentIndex + 1} of {sessionBills.length}</p>
+          </div>
 
-            <div className="flex flex-row gap-6">
-              {/* Image preview - left side */}
-              <div className="bg-gray-100 rounded-lg overflow-hidden flex items-center justify-center relative w-1/2">
-                {imageSrc ? (
-                  <img 
-                    src={imageSrc} 
-                    alt={`Bill ${currentIndex + 1}`} 
-                    className="max-w-full max-h-[500px] object-contain" 
-                  />
-                ) : (
-                  <div className="p-4 text-gray-500">
-                    <p>Image not available</p>
-                  </div>
-                )}
+          <Button 
+            variant="ghost" 
+            size="icon"
+            onClick={() => router.push('/create-invoice')}
+            className="h-10 w-10"
+          >
+            <RotateCcw className="h-5 w-5" />
+          </Button>
+        </div>
+
+        {/* Progress Bar */}
+        <div className="w-full bg-gray-200 h-1">
+          <div 
+            className="bg-blue-500 h-1 transition-all duration-300"
+            style={{ width: `${((currentIndex + 1) / sessionBills.length) * 100}%` }}
+          />
+        </div>
+      </div>
+
+      <div className="p-3 pb-20">
+        {/* Receipt Image Section - Very Compact */}
+        <div className="mb-2">
+          {/* Confidence Badge */}
+          <div className="flex justify-center mb-1">
+            <Badge 
+              variant={getConfidenceBadgeVariant(confidence)}
+              className="text-xs font-medium"
+            >
+              ✓ {confidence.toUpperCase()}
+            </Badge>
+          </div>
+
+          {/* Receipt Image - Very Small */}
+          <div className="bg-gray-100 rounded overflow-hidden flex items-center justify-center relative h-20 mx-8">
+            {imageSrc ? (
+              <img 
+                src={imageSrc} 
+                alt={`Bill ${currentIndex + 1}`} 
+                className="max-w-full max-h-full object-contain" 
+              />
+            ) : (
+              <div className="text-gray-500 text-center text-xs">
+                <p>Image not available</p>
               </div>
-              
-              {/* Form - right side */}
-              <div className="bg-white rounded-lg w-1/2">
-                <div className="h-full flex flex-col">
-                  <div className="flex-grow overflow-y-auto">
-                    <div className="space-y-4">
-                      {/* Rate field */}
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">
-                          Rate (Rs/L):
-                        </label>
-                        <input
-                          type="text"
-                          value={rate}
-                          onChange={(e) => handleFieldChange('rate', e.target.value)}
-                          className={`w-full p-2 border rounded-md ${fieldErrors.rate ? 'border-red-500' : 'border-gray-300'}`}
-                        />
-                        {fieldErrors.rate && (
-                          <p className="mt-1 text-sm text-red-600">{fieldErrors.rate}</p>
-                        )}
-                      </div>
-                      
-                      {/* Volume field */}
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">
-                          Volume (L):
-                        </label>
-                        <input
-                          type="text"
-                          value={volume}
-                          onChange={(e) => handleFieldChange('volume', e.target.value)}
-                          className={`w-full p-2 border rounded-md ${fieldErrors.volume ? 'border-red-500' : 'border-gray-300'}`}
-                        />
-                        {fieldErrors.volume && (
-                          <p className="mt-1 text-sm text-red-600">{fieldErrors.volume}</p>
-                        )}
-                      </div>
-                      
-                      {/* Amount field */}
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">
-                          Amount (Rs):
-                        </label>
-                        <input
-                          type="text"
-                          value={amount}
-                          onChange={(e) => handleFieldChange('amount', e.target.value)}
-                          className={`w-full p-2 border rounded-md ${fieldErrors.amount ? 'border-red-500' : 'border-gray-300'}`}
-                        />
-                        {fieldErrors.amount && (
-                          <p className="mt-1 text-sm text-red-600">{fieldErrors.amount}</p>
-                        )}
-                      </div>
-                      
-                      {/* Date field */}
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">
-                          Date (DD-MM-YY):
-                          {needsReview && (
-                            <span className="ml-2 text-xs text-amber-600 bg-amber-100 px-2 py-1 rounded">
-                              Needs Review
-                            </span>
-                          )}
-                        </label>
-                        <input
-                          type="text"
-                          value={date}
-                          onChange={(e) => handleFieldChange('date', e.target.value)}
-                          placeholder="DD-MM-YY"
-                          className={`w-full p-2 border rounded-md ${fieldErrors.date ? 'border-red-500' : needsReview ? 'border-amber-300 bg-amber-50' : 'border-gray-300'}`}
-                        />
-                        {fieldErrors.date && (
-                          <p className="mt-1 text-sm text-red-600">{fieldErrors.date}</p>
-                        )}
-                        {needsReview && !fieldErrors.date && (
-                          <p className="mt-1 text-sm text-amber-600">
-                            Date could not be parsed from receipt. Please verify this date is correct.
-                          </p>
-                        )}
-                      </div>
-                      
-                      {/* Fuel type dropdown */}
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">
-                          Fuel Type:
-                        </label>
-                        <select
-                          value={fuelType}
-                          onChange={(e) => handleFuelTypeChange(e.target.value)}
-                          className="w-full p-2 border border-gray-300 rounded-md bg-white"
-                        >
-                          <option value="">Select Fuel Type</option>
-                          {fuelPrices.map((fuel) => (
-                            <option key={fuel.id} value={fuel.id}>
-                              {fuel.name} (Rs. {fuel.price}/L)
-                            </option>
-                          ))}
-                        </select>
-                      </div>
-                    </div>
-                  </div>
-                  
-                  {/* Navigation controls */}
-                  <div className="mt-6 flex justify-center items-center space-x-4">
-                    <button
-                      onClick={goToPrevious}
-                      disabled={currentIndex === 0}
-                      className="px-4 py-2 border border-gray-300 rounded-md hover:bg-gray-50 disabled:opacity-50 flex items-center"
-                    >
-                      <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
-                      </svg>
-                      Previous
-                    </button>
-                    
-                    <span className="text-gray-600">
-                      {currentIndex + 1} / {sessionBills.length}
-                    </span>
-                    
-                    <button
-                      onClick={goToNext}
-                      disabled={currentIndex === sessionBills.length - 1}
-                      className="px-4 py-2 border border-gray-300 rounded-md hover:bg-gray-50 disabled:opacity-50 flex items-center"
-                    >
-                      Next
-                      <svg className="w-4 h-4 ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                      </svg>
-                    </button>
-                  </div>
-                  
-                  {/* Action buttons */}
-                  <div className="mt-6 flex space-x-3 pt-4 border-t">
-                    <button
-                      onClick={handleBack}
-                      className="px-4 py-2 border border-gray-300 text-gray-700 rounded-md hover:bg-gray-50"
-                    >
-                      Back
-                    </button>
-                    
-                    <Button
-                      onClick={openDeleteConfirmation}
-                      variant="destructive"
-                      className="px-4 py-2"
-                    >
-                      Delete Bill
-                    </Button>
-                    
-                    <div className="flex-grow"></div>
-                    
-                    <button
-                      onClick={handleSave}
-                      className="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700"
-                    >
-                      Save Changes
-                    </button>
-                  </div>
-                </div>
-              </div>
-            </div>
+            )}
           </div>
         </div>
-        
-        {/* Delete Confirmation Dialog */}
-        <Dialog open={showDeleteConfirm} onOpenChange={setShowDeleteConfirm}>
-          <DialogContent>
-            <DialogHeader>
-              <DialogTitle>Delete Bill</DialogTitle>
-              <DialogDescription>
-                Are you sure you want to delete this bill? This action cannot be undone.
-                {editedBills.length <= 1 && (
-                  <span className="block mt-2 text-amber-600 font-medium">
-                    This is the last bill. Deleting it will redirect you back to create a new invoice.
-                  </span>
-                )}
-              </DialogDescription>
-            </DialogHeader>
-            <DialogFooter>
-              <Button variant="outline" onClick={cancelDelete}>
-                Cancel
-              </Button>
-              <Button variant="destructive" onClick={handleDeleteBill}>
-                Delete
-              </Button>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
+
+        {/* Form Fields Section - Optimized Spacing */}
+        <div className="space-y-2">
+          {/* Rate and Volume - Grid Row */}
+          <div className="grid grid-cols-2 gap-2">
+            {/* Rate Field */}
+            <div className="bg-white rounded p-2 border">
+              <label className="block text-xs font-medium text-gray-700 mb-1">Rate (Rs/L)</label>
+              <input
+                type="text"
+                value={rate}
+                onChange={(e) => handleFieldChange('rate', e.target.value)}
+                className={`w-full p-2 text-sm border rounded ${
+                  fieldErrors.rate ? 'border-red-500' : 'border-gray-300'
+                }`}
+                placeholder="0.00"
+              />
+              {fieldErrors.rate && <p className="mt-1 text-xs text-red-600">{fieldErrors.rate}</p>}
+            </div>
+            
+            {/* Volume Field */}
+            <div className="bg-white rounded p-2 border">
+              <label className="block text-xs font-medium text-gray-700 mb-1">Volume (L)</label>
+              <input
+                type="text"
+                value={volume}
+                onChange={(e) => handleFieldChange('volume', e.target.value)}
+                className={`w-full p-2 text-sm border rounded ${
+                  fieldErrors.volume ? 'border-red-500' : 'border-gray-300'
+                }`}
+                placeholder="0.00"
+              />
+              {fieldErrors.volume && <p className="mt-1 text-xs text-red-600">{fieldErrors.volume}</p>}
+            </div>
+          </div>
+          
+          {/* Amount Field */}
+          <div className="bg-white rounded p-2 border">
+            <label className="block text-xs font-medium text-gray-700 mb-1">Amount (Rs)</label>
+            <input
+              type="text"
+              value={amount}
+              onChange={(e) => handleFieldChange('amount', e.target.value)}
+              className={`w-full p-2 text-sm border rounded ${
+                fieldErrors.amount ? 'border-red-500' : 'border-gray-300'
+              }`}
+              placeholder="0.00"
+            />
+            {fieldErrors.amount && <p className="mt-1 text-xs text-red-600">{fieldErrors.amount}</p>}
+          </div>
+          
+          {/* Date Field */}
+          <div className="bg-white rounded p-2 border">
+            <label className="block text-xs font-medium text-gray-700 mb-1">
+              Date (DD-MM-YY)
+              {needsReview && (
+                <span className="ml-1 text-xs text-amber-600 bg-amber-100 px-1 py-0.5 rounded">
+                  Needs Review
+                </span>
+              )}
+            </label>
+            <input
+              type="text"
+              value={date}
+              onChange={(e) => handleFieldChange('date', e.target.value)}
+              placeholder="DD-MM-YY"
+              className={`w-full p-2 text-sm border rounded ${
+                fieldErrors.date ? 'border-red-500' : 
+                needsReview ? 'border-amber-300 bg-amber-50' : 'border-gray-300'
+              }`}
+            />
+            {fieldErrors.date && <p className="mt-1 text-xs text-red-600">{fieldErrors.date}</p>}
+            {needsReview && !fieldErrors.date && (
+              <p className="mt-1 text-xs text-amber-600">Date could not be parsed from receipt. Please verify.</p>
+            )}
+          </div>
+
+          {/* Fuel Type Field */}
+          <div className="bg-white rounded p-2 border">
+            <label className="block text-xs font-medium text-gray-700 mb-1">
+              Fuel Type
+              {confidence === 'flagged' && (
+                <span className="ml-1 text-xs text-red-600 bg-red-100 px-1 py-0.5 rounded">
+                  Manual Selection Required
+                </span>
+              )}
+            </label>
+            <select
+              value={fuelType}
+              onChange={(e) => handleFuelTypeChange(e.target.value)}
+              className={`w-full p-2 text-sm border rounded bg-white ${
+                confidence === 'flagged' ? 'border-red-300 bg-red-50' : 'border-gray-300'
+              }`}
+            >
+              <option value="">Select fuel type</option>
+              {fuelPrices.map((fuel) => (
+                <option key={fuel.id} value={fuel.id}>
+                  {fuel.name} (Rs. {fuel.price}/L)
+                </option>
+              ))}
+            </select>
+            {fuelType && (
+              <p className="mt-1 text-xs text-green-600">
+                Selected: {currentBill?.extractedData?.fuelTypeName || fuelPrices.find(f => f.id === fuelType)?.name}
+              </p>
+            )}
+          </div>
+        </div>
       </div>
+
+      {/* Fixed Bottom Navigation - Icon Buttons Row */}
+      <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 px-4 py-3">
+        {/* Page Counter */}
+        <div className="flex justify-center mb-3">
+          <span className="px-3 py-1 bg-gray-100 rounded text-xs font-medium">
+            {currentIndex + 1} / {sessionBills.length}
+          </span>
+        </div>
+
+        <div className="flex justify-center items-center gap-6">
+          {/* Previous - Back Icon */}
+          <button
+            onClick={goToPrevious}
+            disabled={currentIndex === 0}
+            className={`w-12 h-12 border border-gray-300 rounded-full flex items-center justify-center transition-colors ${
+              currentIndex === 0 
+                ? 'bg-gray-50 text-gray-300 cursor-not-allowed' 
+                : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+            }`}
+            title="Previous"
+          >
+            <ChevronLeft className="w-5 h-5" />
+          </button>
+          
+          {/* Complete - Check Icon */}
+          <button
+            onClick={handleSave}
+            className="w-12 h-12 bg-green-500 rounded-full flex items-center justify-center hover:bg-green-600 transition-colors"
+            title="Complete"
+          >
+            <Save className="w-5 h-5 text-white" />
+          </button>
+          
+          {/* Next/Delete - Forward/Trash Icon */}
+          {currentIndex === sessionBills.length - 1 ? (
+            <button
+              onClick={openDeleteConfirmation}
+              className="w-12 h-12 bg-red-500 rounded-full flex items-center justify-center hover:bg-red-600 transition-colors"
+              title="Delete Bill"
+            >
+              <Trash2 className="w-5 h-5 text-white" />
+            </button>
+          ) : (
+            <button
+              onClick={goToNext}
+              className="w-12 h-12 bg-blue-500 rounded-full flex items-center justify-center hover:bg-blue-600 transition-colors"
+              title="Next Bill"
+            >
+              <ChevronRight className="w-5 h-5 text-white" />
+            </button>
+          )}
+        </div>
+      </div>
+      
+      {/* Delete Confirmation Dialog */}
+      <Dialog open={showDeleteConfirm} onOpenChange={setShowDeleteConfirm}>
+        <DialogContent className="max-w-sm mx-auto">
+          <DialogHeader>
+            <DialogTitle>Delete Bill</DialogTitle>
+            <DialogDescription>
+              Are you sure you want to delete this bill? This action cannot be undone.
+              {editedBills.length <= 1 && (
+                <span className="block mt-2 text-amber-600 font-medium">
+                  This is the last bill. Deleting it will redirect you back to create a new invoice.
+                </span>
+              )}
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter className="gap-2">
+            <Button variant="outline" onClick={cancelDelete} className="flex-1">
+              Cancel
+            </Button>
+            <Button variant="destructive" onClick={handleDeleteBill} className="flex-1">
+              Delete
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </main>
   );
 } 

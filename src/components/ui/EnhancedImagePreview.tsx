@@ -291,17 +291,43 @@ export default function EnhancedImagePreview({
   };
 
   return (
-    <div className="bg-white rounded-lg shadow-md h-full flex flex-col">
-      <div className="p-4 flex-grow">
-        <h2 className="text-xl font-semibold mb-4">Review Bill</h2>
-        
-        <div className="flex flex-row gap-6">
-          {/* Image preview */}
-          <div className="bg-gray-100 rounded-lg overflow-hidden flex items-center justify-center relative w-1/2">
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100">
+      {/* Mobile Header */}
+      <div className="sticky top-0 z-10 bg-white/95 backdrop-blur-sm border-b border-gray-200">
+        <div className="flex items-center justify-between p-4">
+          <button
+            onClick={onRetake}
+            className="flex items-center gap-2 px-3 py-2 text-gray-600 hover:text-gray-800"
+          >
+            ← Retake
+          </button>
+          
+          <div className="flex-1 text-center">
+            <h1 className="text-lg font-semibold text-gray-900">Review Bill</h1>
+          </div>
+
+          <div className="w-20" /> {/* Spacer for centering */}
+        </div>
+      </div>
+
+      <div className="p-3 pb-20">
+        {/* Receipt Image Section - Very Compact */}
+        <div className="mb-2">
+          {/* Confidence Badge */}
+          {resolvedData && (
+            <div className="flex justify-center mb-1">
+              <span className={`px-2 py-1 rounded text-xs font-medium ${getConfidenceColor(resolvedData.confidence)}`}>
+                {getConfidenceIcon(resolvedData.confidence)} {resolvedData.confidence.toUpperCase()}
+              </span>
+            </div>
+          )}
+
+          {/* Receipt Image - Very Small */}
+          <div className="bg-gray-100 rounded overflow-hidden flex items-center justify-center relative h-20 mx-8">
             <img 
               src={imageSrc} 
               alt="Captured bill" 
-              className="max-w-full max-h-[500px] object-contain" 
+              className="max-w-full max-h-full object-contain" 
             />
             
             {/* Scanning animation overlay */}
@@ -312,231 +338,234 @@ export default function EnhancedImagePreview({
                   <div className="absolute inset-0 bg-gradient-to-r from-transparent via-blue-400 to-transparent"></div>
                   <div className="absolute inset-0 blur-sm bg-blue-400 opacity-60"></div>
                 </div>
-                <div className="absolute bottom-2 left-0 right-0 text-center text-white text-sm font-medium bg-black bg-opacity-40 py-1">
-                  Scanning receipt...
+                <div className="absolute bottom-0 left-0 right-0 text-center text-white text-xs bg-black bg-opacity-40 py-1">
+                  Scanning...
                 </div>
               </div>
             )}
           </div>
-          
-          {/* Extracted data form */}
-          <div className="bg-white rounded-lg w-1/2">
-            {loading ? (
-              <div className="flex flex-col items-center justify-center h-full">
-                <div className="text-gray-500 text-center">
-                  <p className="mb-2">Processing receipt...</p>
-                  <p className="text-sm">Analyzing image and matching fuel types</p>
-                </div>
-              </div>
-            ) : error ? (
-              <div className="flex flex-col items-center justify-center h-full">
-                <div className="text-red-500 text-center mb-4">
-                  <p>{error}</p>
-                </div>
+        </div>
+        
+        {/* Form Fields Section - Optimized Spacing */}
+        <div className="space-y-2">
+          {/* Processing Status */}
+          {loading && (
+            <div className="bg-blue-50 rounded p-2 text-center border border-blue-200">
+              <div className="text-blue-700 text-xs">Processing receipt...</div>
+            </div>
+          )}
+
+          {/* Error Status */}
+          {error && (
+            <div className="bg-red-50 rounded p-2 text-center border border-red-200">
+              <div className="text-red-700 text-xs">{error}</div>
+            </div>
+          )}
+
+          {/* Resolution Details */}
+          {resolvedData && showResolutionDetails && (
+            <div className="bg-white rounded p-2 border">
+              <div className="flex items-center justify-between mb-1">
+                <h3 className="font-medium text-gray-900 text-xs">Resolution Details</h3>
                 <button
-                  onClick={onRetake}
-                  className="px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600"
+                  onClick={() => setShowResolutionDetails(false)}
+                  className="text-gray-400 hover:text-gray-600 text-xs"
                 >
-                  Retake Photo
+                  ✕
                 </button>
               </div>
-            ) : resolvedData ? (
-              <div className="h-full flex flex-col">
-                {/* Resolution Status - Hidden behind info button */}
-                <div className="mb-4 flex items-center justify-between">
-                  <span className={`px-2 py-1 rounded-full text-xs font-semibold ${getConfidenceColor(resolvedData.confidence)}`}>
-                    {getConfidenceIcon(resolvedData.confidence)} {resolvedData.confidence.toUpperCase()}
-                  </span>
-                  <button
-                    onClick={() => setShowResolutionDetails(!showResolutionDetails)}
-                    className="text-xs text-gray-500 hover:text-gray-700"
-                  >
-                    info
-                  </button>
-                </div>
-
-                {/* Collapsible Resolution Details */}
-                {showResolutionDetails && (
-                  <div className="mb-4 p-3 rounded-lg border bg-gray-50">
-                    <p className="text-xs text-gray-600 mb-2">
-                      Method: {resolvedData.resolutionMethod.replace('-', ' ')}
-                      {resolvedData.matchDetails?.priceMatchAccuracy && (
-                        ` • Price match: ${(resolvedData.matchDetails.priceMatchAccuracy * 100).toFixed(0)}%`
-                      )}
-                      {resolvedData.matchDetails?.dateMatchAccuracy && (
-                        ` • Date match: ${(resolvedData.matchDetails.dateMatchAccuracy * 100).toFixed(0)}%`
-                      )}
-                    </p>
-                    {resolvedData.productText && (
-                      <div className="mb-2">
-                        <span className="text-xs font-medium text-gray-700">Detected Product Text:</span>
-                        <div className="text-xs text-gray-600 mt-1">&quot;{resolvedData.productText}&quot;</div>
-                      </div>
-                    )}
-                    {isEditing && (
-                      <button
-                        onClick={rerunResolver}
-                        className="mt-2 text-xs text-blue-600 hover:text-blue-800"
-                      >
-                        Re-run resolver
-                      </button>
-                    )}
-                  </div>
+              <p className="text-xs text-gray-600 mb-1">
+                Method: {resolvedData.resolutionMethod.replace('-', ' ')}
+                {resolvedData.matchDetails?.priceMatchAccuracy && (
+                  ` • Price match: ${(resolvedData.matchDetails.priceMatchAccuracy * 100).toFixed(0)}%`
                 )}
-
-                <div className="flex-grow overflow-y-auto">
-                  <div className="space-y-4">
-                    {/* Rate field */}
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">
-                        Rate (Rs/L):
-                      </label>
-                      <input
-                        type="text"
-                        value={resolvedData.rate}
-                        onChange={(e) => handleFieldChange('rate', e.target.value)}
-                        className={`w-full p-2 border rounded-md ${fieldErrors.rate ? 'border-red-500' : 'border-gray-300'}`}
-                      />
-                      {fieldErrors.rate && (
-                        <p className="mt-1 text-sm text-red-600">{fieldErrors.rate}</p>
-                      )}
-                    </div>
-                    
-                    {/* Volume field */}
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">
-                        Volume (L):
-                      </label>
-                      <input
-                        type="text"
-                        value={resolvedData.volume}
-                        onChange={(e) => handleFieldChange('volume', e.target.value)}
-                        className={`w-full p-2 border rounded-md ${fieldErrors.volume ? 'border-red-500' : 'border-gray-300'}`}
-                      />
-                      {fieldErrors.volume && (
-                        <p className="mt-1 text-sm text-red-600">{fieldErrors.volume}</p>
-                      )}
-                    </div>
-                    
-                    {/* Amount field */}
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">
-                        Amount (Rs):
-                      </label>
-                      <input
-                        type="text"
-                        value={resolvedData.amount}
-                        onChange={(e) => handleFieldChange('amount', e.target.value)}
-                        className={`w-full p-2 border rounded-md ${fieldErrors.amount ? 'border-red-500' : 'border-gray-300'}`}
-                      />
-                      {fieldErrors.amount && (
-                        <p className="mt-1 text-sm text-red-600">{fieldErrors.amount}</p>
-                      )}
-                    </div>
-                    
-                    {/* Date field */}
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">
-                        Date (DD-MM-YY):
-                        {resolvedData.needsReview && (
-                          <span className="ml-2 text-xs text-amber-600 bg-amber-100 px-2 py-1 rounded">
-                            Needs Review
-                          </span>
-                        )}
-                      </label>
-                      <input
-                        type="text"
-                        value={resolvedData.date}
-                        onChange={(e) => handleFieldChange('date', e.target.value)}
-                        placeholder="DD-MM-YY"
-                        className={`w-full p-2 border rounded-md ${
-                          fieldErrors.date 
-                            ? 'border-red-500' 
-                            : resolvedData.needsReview 
-                              ? 'border-amber-300 bg-amber-50' 
-                              : 'border-gray-300'
-                        }`}
-                      />
-                      {fieldErrors.date && (
-                        <p className="mt-1 text-sm text-red-600">{fieldErrors.date}</p>
-                      )}
-                      {resolvedData.needsReview && !fieldErrors.date && (
-                        <p className="mt-1 text-sm text-amber-600">
-                          Date could not be parsed from receipt. Please verify this date is correct.
-                        </p>
-                      )}
-                    </div>
-                    
-                    {/* Fuel type dropdown */}
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">
-                        Fuel Type:
-                        {resolvedData.confidence === 'flagged' && (
-                          <span className="ml-2 text-xs text-red-600 bg-red-100 px-2 py-1 rounded">
-                            Manual Selection Required
-                          </span>
-                        )}
-                      </label>
-                      <select
-                        value={resolvedData.fuelType || ''}
-                        onChange={(e) => handleFuelTypeChange(e.target.value)}
-                        className={`w-full p-2 border rounded-md bg-white ${
-                          resolvedData.confidence === 'flagged' ? 'border-red-300 bg-red-50' : 'border-gray-300'
-                        }`}
-                      >
-                        <option value="">Select Fuel Type</option>
-                        {priceHistory
-                          .filter(entry => entry.isActive)
-                          .map((entry) => (
-                            <option key={entry.id} value={entry.id}>
-                              {entry.fuelType} (Rs. {entry.price}/L)
-                            </option>
-                          ))}
-                      </select>
-                      {resolvedData.fuelTypeName && (
-                        <p className="mt-1 text-sm text-gray-600">
-                          Selected: {resolvedData.fuelTypeName}
-                        </p>
-                      )}
-                    </div>
-
-
-                  </div>
+                {resolvedData.matchDetails?.dateMatchAccuracy && (
+                  ` • Date match: ${(resolvedData.matchDetails.dateMatchAccuracy * 100).toFixed(0)}%`
+                )}
+              </p>
+              {resolvedData.productText && (
+                <div className="mb-1">
+                  <span className="text-xs font-medium text-gray-700">Detected Product Text:</span>
+                  <div className="text-xs text-gray-600 mt-1">&quot;{resolvedData.productText}&quot;</div>
                 </div>
-                
-                <div className="mt-4 flex space-x-3 pt-2 border-t">
-                  <button
-                    onClick={onRetake}
-                    className="px-3 py-1.5 border border-gray-300 text-gray-700 rounded-md hover:bg-gray-50"
-                  >
-                    Retake
-                  </button>
-                  
-                  <div className="flex-grow"></div>
-                  
-                  {onComplete && (
-                    <button
-                      onClick={handleComplete}
-                      className="px-3 py-1.5 bg-green-600 text-white rounded-md hover:bg-green-700"
-                    >
-                      Complete
-                    </button>
-                  )}
-                  
-                  <button
-                    onClick={handleNext}
-                    className="px-3 py-1.5 bg-blue-600 text-white rounded-md hover:bg-blue-700"
-                  >
-                    Next Bill
-                  </button>
-                </div>
-              </div>
-            ) : (
-              <div className="flex flex-col items-center justify-center h-full">
-                <p className="text-gray-500">No data extracted</p>
-              </div>
+              )}
+              {isEditing && (
+                <button
+                  onClick={rerunResolver}
+                  className="mt-1 text-xs text-blue-600 hover:text-blue-800"
+                >
+                  Re-run resolver
+                </button>
+              )}
+            </div>
+          )}
+
+          {/* Info Button - Only show when we have resolved data */}
+          {resolvedData && (
+            <div className="flex justify-center">
+              <button
+                onClick={() => setShowResolutionDetails(!showResolutionDetails)}
+                className="text-xs text-gray-500 hover:text-gray-700 bg-white rounded px-2 py-1 border"
+              >
+                Info
+              </button>
+            </div>
+          )}
+
+          {/* Fuel Type Field - Top Row */}
+          <div className="bg-white rounded p-2 border">
+            <label className="block text-xs font-medium text-gray-700 mb-1">
+              Fuel Type
+              {resolvedData?.confidence === 'flagged' && (
+                <span className="ml-1 text-xs text-red-600 bg-red-100 px-1 py-0.5 rounded">
+                  Manual Selection Required
+                </span>
+              )}
+            </label>
+            <select
+              value={resolvedData?.fuelType || ''}
+              onChange={(e) => handleFuelTypeChange(e.target.value)}
+              disabled={loading}
+              className={`w-full p-2 text-sm border rounded bg-white ${
+                loading ? 'bg-gray-100 border-gray-200' : resolvedData?.confidence === 'flagged' ? 'border-red-300 bg-red-50' : 'border-gray-300'
+              }`}
+            >
+              <option value="">{loading ? 'Loading fuel types...' : 'Select fuel type'}</option>
+              {priceHistory
+                .filter(entry => entry.isActive)
+                .map((entry) => (
+                  <option key={entry.id} value={entry.id}>
+                    {entry.fuelType} (Rs. {entry.price}/L)
+                  </option>
+                ))}
+            </select>
+            {resolvedData?.fuelTypeName && (
+              <p className="mt-1 text-xs text-green-600">Selected: {resolvedData.fuelTypeName}</p>
             )}
           </div>
+
+          {/* Rate and Volume - Second Row */}
+          <div className="grid grid-cols-2 gap-2">
+            {/* Rate Field */}
+            <div className="bg-white rounded p-2 border">
+              <label className="block text-xs font-medium text-gray-700 mb-1">Rate (Rs/L)</label>
+              <input
+                type="text"
+                value={resolvedData?.rate || ''}
+                onChange={(e) => handleFieldChange('rate', e.target.value)}
+                disabled={loading}
+                className={`w-full p-2 text-sm border rounded ${
+                  loading ? 'bg-gray-100 border-gray-200' : fieldErrors.rate ? 'border-red-500' : 'border-gray-300'
+                }`}
+                placeholder={loading ? 'Extracting...' : '0.00'}
+              />
+              {fieldErrors.rate && <p className="mt-1 text-xs text-red-600">{fieldErrors.rate}</p>}
+            </div>
+            
+            {/* Volume Field */}
+            <div className="bg-white rounded p-2 border">
+              <label className="block text-xs font-medium text-gray-700 mb-1">Volume (L)</label>
+              <input
+                type="text"
+                value={resolvedData?.volume || ''}
+                onChange={(e) => handleFieldChange('volume', e.target.value)}
+                disabled={loading}
+                className={`w-full p-2 text-sm border rounded ${
+                  loading ? 'bg-gray-100 border-gray-200' : fieldErrors.volume ? 'border-red-500' : 'border-gray-300'
+                }`}
+                placeholder={loading ? 'Extracting...' : '0.00'}
+              />
+              {fieldErrors.volume && <p className="mt-1 text-xs text-red-600">{fieldErrors.volume}</p>}
+            </div>
+          </div>
+          
+          {/* Amount Field - Third Row */}
+          <div className="bg-white rounded p-2 border">
+            <label className="block text-xs font-medium text-gray-700 mb-1">Amount (Rs)</label>
+            <input
+              type="text"
+              value={resolvedData?.amount || ''}
+              onChange={(e) => handleFieldChange('amount', e.target.value)}
+              disabled={loading}
+              className={`w-full p-2 text-sm border rounded ${
+                loading ? 'bg-gray-100 border-gray-200' : fieldErrors.amount ? 'border-red-500' : 'border-gray-300'
+              }`}
+              placeholder={loading ? 'Extracting...' : '0.00'}
+            />
+            {fieldErrors.amount && <p className="mt-1 text-xs text-red-600">{fieldErrors.amount}</p>}
+          </div>
+          
+          {/* Date Field - Fourth Row */}
+          <div className="bg-white rounded p-2 border">
+            <label className="block text-xs font-medium text-gray-700 mb-1">
+              Date (DD-MM-YY)
+              {resolvedData?.needsReview && (
+                <span className="ml-1 text-xs text-amber-600 bg-amber-100 px-1 py-0.5 rounded">
+                  Needs Review
+                </span>
+              )}
+            </label>
+            <input
+              type="text"
+              value={resolvedData?.date || ''}
+              onChange={(e) => handleFieldChange('date', e.target.value)}
+              disabled={loading}
+              placeholder={loading ? 'Extracting...' : 'DD-MM-YY'}
+              className={`w-full p-2 text-sm border rounded ${
+                loading 
+                  ? 'bg-gray-100 border-gray-200' 
+                  : fieldErrors.date 
+                    ? 'border-red-500' 
+                    : resolvedData?.needsReview 
+                      ? 'border-amber-300 bg-amber-50' 
+                      : 'border-gray-300'
+              }`}
+            />
+            {fieldErrors.date && <p className="mt-1 text-xs text-red-600">{fieldErrors.date}</p>}
+            {resolvedData?.needsReview && !fieldErrors.date && (
+              <p className="mt-1 text-xs text-amber-600">Date could not be parsed from receipt. Please verify.</p>
+            )}
+          </div>
+        </div>
+      </div>
+
+      {/* Fixed Bottom Navigation - Icon Buttons Row */}
+      <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 px-4 py-2">
+        <div className="flex justify-center items-center gap-6">
+          {/* Retake - Back Icon */}
+          <button
+            onClick={onRetake}
+            className="w-12 h-12 bg-gray-100 border border-gray-300 rounded-full flex items-center justify-center hover:bg-gray-200 transition-colors"
+            title="Retake"
+          >
+            <svg className="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+            </svg>
+          </button>
+          
+          {/* Complete - Check Icon */}
+          {onComplete && (
+            <button
+              onClick={handleComplete}
+              className="w-12 h-12 bg-green-500 rounded-full flex items-center justify-center hover:bg-green-600 transition-colors"
+              title="Complete"
+            >
+              <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+              </svg>
+            </button>
+          )}
+          
+          {/* Next Bill - Forward Icon */}
+          <button
+            onClick={handleNext}
+            className="w-12 h-12 bg-blue-500 rounded-full flex items-center justify-center hover:bg-blue-600 transition-colors"
+            title="Next Bill"
+          >
+            <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+            </svg>
+          </button>
         </div>
       </div>
     </div>

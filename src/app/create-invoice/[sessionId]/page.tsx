@@ -30,8 +30,11 @@ export default function CreateInvoice() {
 
   if (loading) {
     return (
-      <div className="flex min-h-screen items-center justify-center">
-        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500"></div>
+      <div className="flex min-h-screen items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-100">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500 mx-auto mb-4"></div>
+          <p className="text-gray-600">Loading...</p>
+        </div>
       </div>
     );
   }
@@ -44,24 +47,21 @@ export default function CreateInvoice() {
   // Don't render if sessionId is invalid (will redirect)
   if (!sessionId || !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(sessionId)) {
     return (
-      <div className="flex min-h-screen items-center justify-center">
-        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500"></div>
+      <div className="flex min-h-screen items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-100">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500 mx-auto mb-4"></div>
+          <p className="text-gray-600">Validating session...</p>
+        </div>
       </div>
     );
   }
 
   return (
     <SubscriptionGate>
-      <main className="min-h-screen p-4 md:p-8 bg-gray-50">
-        <div className="max-w-4xl mx-auto">
-          <div className="mb-6">
-            <h1 className="text-2xl md:text-3xl font-bold">Create Invoice</h1>
-            <p className="text-sm text-gray-600 mt-1">Session ID: {sessionId}</p>
-          </div>
-          <InvoiceSessionProvider sessionId={sessionId}>
-            <InvoiceForm />
-          </InvoiceSessionProvider>
-        </div>
+      <main className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100">
+        <InvoiceSessionProvider sessionId={sessionId}>
+          <InvoiceForm />
+        </InvoiceSessionProvider>
       </main>
     </SubscriptionGate>
   );

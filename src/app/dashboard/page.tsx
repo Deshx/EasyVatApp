@@ -8,6 +8,21 @@ import { doc, getDoc } from "firebase/firestore";
 import { db } from "@/lib/firebase/firebase";
 import { FuelPricesDisplay } from "@/components/ui/FuelPricesDisplay";
 import { SubscriptionGate } from "@/components/ui/SubscriptionGate";
+import { Card, CardContent } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { 
+  Plus, 
+  FileText, 
+  Settings, 
+  LogOut, 
+  Fuel, 
+  Crown,
+  User,
+  Shield,
+  BarChart3,
+  Zap
+} from "lucide-react";
 
 export default function Dashboard() {
   const { user, loading, error, signOut, profileStatus } = useAuth();
@@ -59,7 +74,7 @@ export default function Dashboard() {
 
   if (loading) {
     return (
-      <div className="flex min-h-screen items-center justify-center">
+      <div className="flex min-h-screen items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-100">
         <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500"></div>
       </div>
     );
@@ -99,108 +114,203 @@ function DashboardContent({
   const { isSuperAdmin } = useAuth();
 
   return (
-    <main className="min-h-screen p-4 md:p-8 bg-gray-50">
-      <div className="max-w-xl mx-auto">
-        <div className="flex flex-col items-center mb-6">
-          <h1 className="text-2xl md:text-3xl font-bold text-center">EasyVat</h1>
-          
-          {user && (
-            <div className="flex items-center mt-4 gap-2">
-              {user.photoURL && (
-                <img 
-                  src={user.photoURL} 
-                  alt="Profile" 
-                  className="w-8 h-8 rounded-full"
-                />
-              )}
-              <span className="text-sm font-medium">{user.displayName || user.email || 'User'}</span>
-              {isSuperAdmin && (
-                <span className="bg-amber-100 text-amber-800 text-xs px-2 py-1 rounded-full">
-                  Super Admin
-                </span>
-              )}
+    <main className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100">
+      {/* Header */}
+      <div className="sticky top-0 z-10 bg-white/95 backdrop-blur-sm border-b border-gray-200">
+        <div className="px-4 py-4">
+          <div className="flex items-center justify-between">
+            <div>
+              <h1 className="text-2xl font-bold text-gray-900">EasyVat</h1>
+              <p className="text-sm text-gray-500">Dashboard</p>
             </div>
-          )}
-        </div>
-
-        {error && (
-          <div className="bg-red-50 border border-red-400 text-red-700 px-4 py-3 rounded-lg mb-6" role="alert">
-            <p>{error}</p>
+            
+            {user && (
+              <div className="flex items-center gap-3">
+                {user.photoURL && (
+                  <img 
+                    src={user.photoURL} 
+                    alt="Profile" 
+                    className="w-10 h-10 rounded-full border-2 border-white shadow-sm"
+                  />
+                )}
+                <div className="text-right">
+                  <p className="text-sm font-medium text-gray-900">
+                    {user.displayName || user.email || 'User'}
+                  </p>
+                  {isSuperAdmin && (
+                    <Badge variant="outline" className="text-xs">
+                      <Crown className="h-3 w-3 mr-1" />
+                      Super Admin
+                    </Badge>
+                  )}
+                </div>
+              </div>
+            )}
           </div>
+        </div>
+      </div>
+
+      <div className="p-4 pb-20">
+        {error && (
+          <Card className="mb-6 border-red-200 bg-red-50">
+            <CardContent className="p-4">
+              <p className="text-red-700 text-sm">{error}</p>
+            </CardContent>
+          </Card>
         )}
 
+        {/* Fuel Prices */}
         <div className="mb-6">
           <FuelPricesDisplay />
         </div>
 
-        <div className="flex flex-col gap-4 mb-8">
-          {isSuperAdmin && (
-            <>
-              <Link 
-                href="/admin" 
-                className="flex items-center justify-center py-4 bg-purple-600 text-white font-medium rounded-xl hover:bg-purple-700 transition-colors shadow-md"
-              >
-                <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197m13.5-9a2.5 2.5 0 11-5 0 2.5 2.5 0 015 0z" />
-                </svg>
-                Super Admin Panel
-              </Link>
-              <Link 
-                href="/fuel-prices" 
-                className="flex items-center justify-center py-4 bg-green-600 text-white font-medium rounded-xl hover:bg-green-700 transition-colors shadow-md"
-              >
-                <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4" />
-                </svg>
-                Manage Fuel Prices
-              </Link>
-            </>
+        {/* Quick Actions */}
+        <div className="mb-6">
+          <h2 className="text-lg font-semibold text-gray-900 mb-4">Quick Actions</h2>
+          <div className="space-y-3">
+            {/* Create Invoice - Primary Action */}
+            <Card className="bg-gradient-to-r from-blue-600 to-blue-700 border-0 hover:shadow-lg transition-all duration-200">
+              <CardContent className="p-0">
+                <Button 
+                  onClick={handleCreateInvoice}
+                  className="w-full h-auto p-6 bg-transparent hover:bg-white/10 text-white font-medium rounded-lg flex items-center justify-between text-left"
+                >
+                  <div className="flex items-center gap-4">
+                    <div className="p-2 bg-white/20 rounded-lg">
+                      <Plus className="h-6 w-6" />
+                    </div>
+                    <div>
+                      <p className="font-semibold text-lg">Create Invoice</p>
+                      <p className="text-blue-100 text-sm">Scan bills and generate invoices</p>
+                    </div>
+                  </div>
+                  <Zap className="h-5 w-5 text-blue-200" />
+                </Button>
+              </CardContent>
+            </Card>
+
+            {/* View Invoices */}
+            <Card className="hover:shadow-md transition-all duration-200">
+              <CardContent className="p-0">
+                <Button 
+                  asChild
+                  variant="ghost"
+                  className="w-full h-auto p-6 text-gray-800 font-medium rounded-lg flex items-center justify-between text-left hover:bg-gray-50"
+                >
+                  <Link href="/invoices">
+                    <div className="flex items-center gap-4">
+                      <div className="p-2 bg-green-100 rounded-lg">
+                        <FileText className="h-6 w-6 text-green-600" />
+                      </div>
+                      <div>
+                        <p className="font-semibold">View Invoices</p>
+                        <p className="text-gray-500 text-sm">Browse your invoice history</p>
+                      </div>
+                    </div>
+                    <div className="text-gray-400">→</div>
+                  </Link>
+                </Button>
+              </CardContent>
+            </Card>
+
+            {/* Settings */}
+            <Card className="hover:shadow-md transition-all duration-200">
+              <CardContent className="p-0">
+                <Button 
+                  asChild
+                  variant="ghost"
+                  className="w-full h-auto p-6 text-gray-800 font-medium rounded-lg flex items-center justify-between text-left hover:bg-gray-50"
+                >
+                  <Link href="/settings">
+                    <div className="flex items-center gap-4">
+                      <div className="p-2 bg-purple-100 rounded-lg">
+                        <Settings className="h-6 w-6 text-purple-600" />
+                      </div>
+                      <div>
+                        <p className="font-semibold">Settings</p>
+                        <p className="text-gray-500 text-sm">Manage your account</p>
+                      </div>
+                    </div>
+                    <div className="text-gray-400">→</div>
+                  </Link>
+                </Button>
+              </CardContent>
+            </Card>
+          </div>
+        </div>
+
+        {/* Admin Actions */}
+        {isSuperAdmin && (
+          <div className="mb-6">
+            <h2 className="text-lg font-semibold text-gray-900 mb-4">Admin Panel</h2>
+            <div className="space-y-3">
+              {/* Super Admin Panel */}
+              <Card className="hover:shadow-md transition-all duration-200 border-amber-200 bg-amber-50">
+                <CardContent className="p-0">
+                  <Button 
+                    asChild
+                    variant="ghost"
+                    className="w-full h-auto p-6 text-amber-800 font-medium rounded-lg flex items-center justify-between text-left hover:bg-amber-100"
+                  >
+                    <Link href="/admin">
+                      <div className="flex items-center gap-4">
+                        <div className="p-2 bg-amber-200 rounded-lg">
+                          <Shield className="h-6 w-6 text-amber-700" />
+                        </div>
+                        <div>
+                          <p className="font-semibold">Super Admin Panel</p>
+                          <p className="text-amber-600 text-sm">Manage users and system</p>
+                        </div>
+                      </div>
+                      <div className="text-amber-400">→</div>
+                    </Link>
+                  </Button>
+                </CardContent>
+              </Card>
+
+              {/* Manage Fuel Prices */}
+              <Card className="hover:shadow-md transition-all duration-200">
+                <CardContent className="p-0">
+                  <Button 
+                    asChild
+                    variant="ghost"
+                    className="w-full h-auto p-6 text-gray-800 font-medium rounded-lg flex items-center justify-between text-left hover:bg-gray-50"
+                  >
+                    <Link href="/fuel-prices">
+                      <div className="flex items-center gap-4">
+                        <div className="p-2 bg-red-100 rounded-lg">
+                          <Fuel className="h-6 w-6 text-red-600" />
+                        </div>
+                        <div>
+                          <p className="font-semibold">Manage Fuel Prices</p>
+                          <p className="text-gray-500 text-sm">Update current fuel rates</p>
+                        </div>
+                      </div>
+                      <div className="text-gray-400">→</div>
+                    </Link>
+                  </Button>
+                </CardContent>
+              </Card>
+            </div>
+          </div>
+        )}
+      </div>
+      
+      {/* Fixed Bottom Action */}
+      <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 p-4">
+        <Button
+          onClick={handleSignOut}
+          disabled={signOutLoading}
+          variant="outline"
+          className="w-full h-12 text-gray-600 hover:text-gray-800 flex items-center justify-center gap-2"
+        >
+          {signOutLoading ? (
+            <div className="animate-spin rounded-full h-4 w-4 border-t-2 border-b-2 border-gray-600"></div>
+          ) : (
+            <LogOut className="h-4 w-4" />
           )}
-          
-          <button 
-            onClick={handleCreateInvoice}
-            className="flex items-center justify-center py-4 bg-blue-600 text-white font-medium rounded-xl hover:bg-blue-700 transition-colors shadow-md"
-          >
-            <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-            </svg>
-            Create Invoice
-          </button>
-          
-          <Link 
-            href="/invoices" 
-            className="flex items-center justify-center py-4 bg-white text-gray-800 font-medium rounded-xl hover:bg-gray-50 transition-colors shadow-md border border-gray-200"
-          >
-            <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-            </svg>
-            View Invoices
-          </Link>
-          
-          <Link 
-            href="/settings" 
-            className="flex items-center justify-center py-4 bg-white text-gray-800 font-medium rounded-xl hover:bg-gray-50 transition-colors shadow-md border border-gray-200"
-          >
-            <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-            </svg>
-            Settings
-          </Link>
-        </div>
-        
-        <div className="flex justify-center mt-auto">
-          <button
-            onClick={handleSignOut}
-            disabled={signOutLoading}
-            className="px-4 py-2 text-sm text-gray-600 hover:text-gray-800 transition-colors disabled:opacity-50 flex items-center gap-2"
-          >
-            {signOutLoading && (
-              <div className="animate-spin rounded-full h-4 w-4 border-t-2 border-b-2 border-gray-600"></div>
-            )}
-            Sign Out
-          </button>
-        </div>
+          Sign Out
+        </Button>
       </div>
     </main>
   );

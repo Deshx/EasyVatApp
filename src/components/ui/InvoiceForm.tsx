@@ -20,6 +20,26 @@ import ImagePreview from "./ImagePreview";
 import EnhancedImagePreview from "./EnhancedImagePreview";
 import InvoiceGenerator from "./InvoiceGenerator";
 import { useInvoiceSession, BillData } from "@/lib/contexts/InvoiceSessionContext";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import { Badge } from "@/components/ui/badge";
+import { 
+  ArrowLeft, 
+  Camera as CameraIcon, 
+  Building, 
+  MapPin, 
+  Hash, 
+  Calendar,
+  X,
+  Edit,
+  Plus,
+  Check,
+  FileText,
+  Scan
+} from "lucide-react";
 
 interface Company {
   id: string;
@@ -69,6 +89,42 @@ export default function InvoiceForm() {
 
   const suggestionRef = useRef<HTMLDivElement>(null);
   
+  // Check if returning from recheck and restore company information
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const returnFromRecheckFlag = localStorage.getItem(`easyVat_${sessionBills.length > 0 ? 'session' : 'temp'}_returnFromRecheck`);
+      const companyInfoKey = `easyVat_companyInfo_${user?.uid}`;
+      
+      if (returnFromRecheckFlag === 'true' && sessionBills.length > 0) {
+        // Remove the flag
+        localStorage.removeItem(`easyVat_${sessionBills.length > 0 ? 'session' : 'temp'}_returnFromRecheck`);
+        
+        // Try to restore company information from localStorage
+        const storedCompanyInfo = localStorage.getItem(companyInfoKey);
+        if (storedCompanyInfo) {
+          try {
+            const companyInfo = JSON.parse(storedCompanyInfo);
+            setFormData(prev => ({
+              ...prev,
+              companyName: companyInfo.companyName || '',
+              companyAddress: companyInfo.companyAddress || '',
+              companyVatNumber: companyInfo.companyVatNumber || '',
+            }));
+            
+            if (companyInfo.companyVatNumber) {
+              setVatNumberChecked(true);
+            }
+            
+            // Set invoice preview as active to show the preview instead of company form
+            setInvoicePreviewActive(true);
+          } catch (error) {
+            console.error('Error parsing stored company info:', error);
+          }
+        }
+      }
+    }
+  }, [sessionBills.length, user?.uid]);
+  
   // Close suggestions when clicking outside
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
@@ -85,7 +141,8 @@ export default function InvoiceForm() {
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
-    setFormData(prev => ({ ...prev, [name]: value }));
+    const updatedFormData = { ...formData, [name]: value };
+    setFormData(updatedFormData);
     
     // Search for companies by VAT number
     if (name === "companyVatNumber") {
@@ -98,6 +155,12 @@ export default function InvoiceForm() {
         setVatNumberChecked(false);
         setIsNewCompany(false);
       }
+    }
+    
+    // Save company information to localStorage when all required fields are filled
+    if (typeof window !== 'undefined' && user?.uid && updatedFormData.companyName && updatedFormData.companyVatNumber && updatedFormData.companyAddress) {
+      const companyInfoKey = `easyVat_companyInfo_${user.uid}`;
+      localStorage.setItem(companyInfoKey, JSON.stringify(updatedFormData));
     }
   };
 
@@ -126,6 +189,17 @@ export default function InvoiceForm() {
         setIsNewCompany(false);
         setRegistering(false);
         setEditing(false);
+        
+        // Save company information to localStorage
+        if (typeof window !== 'undefined' && user?.uid) {
+          const companyInfoKey = `easyVat_companyInfo_${user.uid}`;
+          localStorage.setItem(companyInfoKey, JSON.stringify({
+            companyName: company.name,
+            companyAddress: company.address,
+            companyVatNumber: company.vatNumber,
+          }));
+        }
+        
         return;
       }
       
@@ -178,6 +252,16 @@ export default function InvoiceForm() {
     setIsNewCompany(false);
     setRegistering(false);
     setEditing(false);
+    
+    // Save company information to localStorage
+    if (typeof window !== 'undefined' && user?.uid) {
+      const companyInfoKey = `easyVat_companyInfo_${user.uid}`;
+      localStorage.setItem(companyInfoKey, JSON.stringify({
+        companyName: company.name,
+        companyAddress: company.address,
+        companyVatNumber: company.vatNumber,
+      }));
+    }
   };
 
   const registerCompany = () => {
@@ -278,208 +362,274 @@ export default function InvoiceForm() {
   };
 
   return (
-    <div className="bg-white rounded-lg shadow-md p-6 relative">
-      {/* Cancel Session Button */}
-      <button
-        onClick={handleCancelSession}
-        className="absolute top-4 right-4 text-gray-500 hover:text-gray-700 text-sm"
-      >
-        Cancel Session
-      </button>
+    <div className="min-h-screen">
+      {/* Mobile Header */}
+      <div className="sticky top-0 z-20 bg-white/95 backdrop-blur-sm border-b border-gray-200">
+        <div className="flex items-center justify-between p-4">
+          <Button 
+            variant="ghost" 
+            size="icon"
+            onClick={handleCancelSession}
+            className="h-10 w-10"
+          >
+            <ArrowLeft className="h-5 w-5" />
+          </Button>
+          
+          <div className="flex-1 text-center">
+            <h1 className="text-lg font-semibold text-gray-900">Create Invoice</h1>
+            {sessionBills.length > 0 && (
+              <p className="text-sm text-gray-500">{sessionBills.length} bills scanned</p>
+            )}
+          </div>
+
+          <Button 
+            variant="ghost" 
+            size="icon"
+            onClick={handleCancelSession}
+            className="h-10 w-10"
+          >
+            <X className="h-5 w-5" />
+          </Button>
+        </div>
+      </div>
 
       {error && (
-        <div className="bg-red-50 border border-red-400 text-red-700 px-4 py-3 rounded-lg mb-6" role="alert">
-          <p>{error}</p>
+        <div className="p-4">
+          <Card className="border-red-200 bg-red-50">
+            <CardContent className="p-4">
+              <p className="text-red-700 text-sm">{error}</p>
+            </CardContent>
+          </Card>
         </div>
       )}
       
       {showCamera && (
-        <Camera onCapture={handleCapture} onClose={closeCamera} />
+        <div className="fixed inset-0 z-50">
+          <Camera onCapture={handleCapture} onClose={closeCamera} />
+        </div>
       )}
       
       {showPreview && capturedImage && (
-        <EnhancedImagePreview 
-          imageSrc={capturedImage} 
-          onRetake={handleRetake} 
-          onNext={(extractedData) => {
-            handleExtractedData(capturedImage, extractedData);
-            handleNext();
-          }}
-          onComplete={(extractedData) => {
-            handleExtractedData(capturedImage, extractedData);
-            handleCompleteSession();
-          }} 
-        />
+        <div className="fixed inset-0 z-50">
+          <EnhancedImagePreview 
+            imageSrc={capturedImage} 
+            onRetake={handleRetake} 
+            onNext={(extractedData) => {
+              handleExtractedData(capturedImage, extractedData);
+              handleNext();
+            }}
+            onComplete={(extractedData) => {
+              handleExtractedData(capturedImage, extractedData);
+              handleCompleteSession();
+            }} 
+          />
+        </div>
       )}
       
       {!showPreview && !showCamera && (
-        <>
-          {/* Show bills in the current session if any */}
+        <div className="p-4 pb-20">
+          {/* Bills in Session */}
           {sessionBills.length > 0 && !recheckModeActive && (
-            <div className="mb-6" data-bills-session>
-              <h3 className="text-lg font-medium mb-2">Bills in current session: {sessionBills.length}</h3>
-              <div className="flex flex-wrap gap-4">
-                {sessionBills.map((bill, index) => (
-                  <div key={index} className="border border-gray-200 rounded-lg p-2 w-32 h-32 flex items-center justify-center overflow-hidden">
-                    <img 
-                      src={bill.imageSrc} 
-                      alt={`Bill ${index + 1}`} 
-                      className="max-w-full max-h-full object-contain" 
-                    />
-                  </div>
-                ))}
-              </div>
-              
-              <div className="mt-4">
-                <button
-                  type="button"
-                  onClick={openCamera}
-                  className="px-4 py-2 border border-blue-500 text-blue-500 rounded-md hover:bg-blue-50 focus:outline-none"
-                >
-                  Scan Another Bill
-                </button>
-              </div>
-              
-              {/* Always show the InvoiceGenerator when there are bills */}
-              {sessionBills.length > 0 && (
-                <div className="mt-6">
-                  <InvoiceGenerator
-                    bills={sessionBills}
-                    companyName={formData.companyName || "test company 1 xtest"}
-                    companyVatNumber={formData.companyVatNumber || "t1-12345678"}
-                    onSuccess={handleInvoiceSuccess}
-                    onError={handleInvoiceError}
-                    onPreviewStateChange={setInvoicePreviewActive}
-                  />
-                </div>
-              )}
-            </div>
-          )}
-          
-          {/* Show form if no bills or if there are bills but still need company info AND invoice preview is not active */}
-          {!invoicePreviewActive && (sessionBills.length === 0 || (sessionBills.length > 0 && (!vatNumberChecked || !formData.companyName))) && (
-            <form onSubmit={handleSubmit} className="space-y-6">
-              <div className="relative" ref={suggestionRef}>
-                <label htmlFor="companyVatNumber" className="block text-sm font-medium text-gray-700 mb-1">
-                  VAT Number*
-                </label>
-                <input
-                  type="text"
-                  id="companyVatNumber"
-                  name="companyVatNumber"
-                  value={formData.companyVatNumber}
-                  onChange={handleChange}
-                  required
-                  className="w-full rounded-lg border border-gray-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  placeholder="Enter VAT number"
-                />
-                
-                {vatNumberChecked && isNewCompany && !registering && (
-                  <div className="mt-2">
-                    <p className="text-yellow-600 text-sm">Company not registered</p>
-                    <button
-                      type="button"
-                      onClick={registerCompany}
-                      className="mt-1 text-sm text-blue-600 hover:text-blue-800 font-medium"
-                    >
-                      Register this company
-                    </button>
-                  </div>
-                )}
-                
-                {showSuggestions && (
-                  <div className="absolute z-10 mt-1 w-full bg-white shadow-lg max-h-60 rounded-md py-1 text-base ring-1 ring-black ring-opacity-5 overflow-auto focus:outline-none sm:text-sm">
-                    {suggestions.map((company) => (
-                      <div
-                        key={company.id}
-                        onClick={() => selectCompany(company)}
-                        className="cursor-pointer px-4 py-2 hover:bg-gray-100"
-                      >
-                        <span className="font-medium">{company.vatNumber}</span> - {company.name}
+            <div className="mb-6">
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-lg">Scanned Bills</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="grid grid-cols-2 gap-3 mb-4">
+                    {sessionBills.map((bill, index) => (
+                      <div key={index} className="relative border border-gray-200 rounded-lg p-2 h-24 flex items-center justify-center overflow-hidden bg-gray-50">
+                        <img 
+                          src={bill.imageSrc} 
+                          alt={`Bill ${index + 1}`} 
+                          className="max-w-full max-h-full object-contain" 
+                        />
+                        <div className="absolute top-1 right-1">
+                          <Badge variant="secondary" className="text-xs">
+                            {index + 1}
+                          </Badge>
+                        </div>
                       </div>
                     ))}
                   </div>
-                )}
-              </div>
-              
-              <div>
-                <div className="flex items-center justify-between mb-1">
-                  <label htmlFor="companyName" className="block text-sm font-medium text-gray-700">
-                    Company Name*
-                  </label>
-                  {vatNumberChecked && !isNewCompany && !registering && !editing && (
-                    <button
-                      type="button"
-                      onClick={enableEditing}
-                      className="text-xs text-blue-600 hover:text-blue-800"
-                    >
-                      Edit details
-                    </button>
-                  )}
-                </div>
-                <input
-                  type="text"
-                  id="companyName"
-                  name="companyName"
-                  value={formData.companyName}
-                  onChange={handleChange}
-                  required
-                  disabled={!vatNumberChecked || (!isNewCompany && !registering && !editing)}
-                  className={`w-full rounded-lg border ${
-                    !vatNumberChecked || (!isNewCompany && !registering && !editing)
-                      ? "bg-gray-100 text-gray-500"
-                      : "bg-white"
-                  } border-gray-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500`}
-                  placeholder="Enter company name"
-                />
-              </div>
-              
-              <div>
-                <label htmlFor="companyAddress" className="block text-sm font-medium text-gray-700 mb-1">
-                  Address*
-                </label>
-                <textarea
-                  id="companyAddress"
-                  name="companyAddress"
-                  value={formData.companyAddress}
-                  onChange={handleChange}
-                  required
-                  disabled={!vatNumberChecked || (!isNewCompany && !registering && !editing)}
-                  rows={3}
-                  className={`w-full rounded-lg border ${
-                    !vatNumberChecked || (!isNewCompany && !registering && !editing)
-                      ? "bg-gray-100 text-gray-500"
-                      : "bg-white"
-                  } border-gray-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500`}
-                />
-              </div>
-              
-              <div>
-                <label htmlFor="invoiceDate" className="block text-sm font-medium text-gray-700 mb-1">
-                  Invoice Date*
-                </label>
-                <input
-                  type="date"
-                  id="invoiceDate"
-                  name="invoiceDate"
-                  value={formData.invoiceDate}
-                  onChange={handleChange}
-                  required
-                  className="w-full rounded-lg border border-gray-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                />
-              </div>
-              
-              <div className="pt-4">
-                <button
-                  type="submit"
-                  className="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50"
-                >
-                  Scan Bill
-                </button>
-              </div>
-            </form>
+                  
+                  <Button
+                    onClick={openCamera}
+                    variant="outline"
+                    className="w-full h-12 border-dashed border-2 border-blue-300 text-blue-600 hover:bg-blue-50"
+                  >
+                    <Plus className="h-4 w-4 mr-2" />
+                    Scan Another Bill
+                  </Button>
+                </CardContent>
+              </Card>
+            </div>
           )}
-        </>
+
+          {/* Company Information Form */}
+          {!invoicePreviewActive && (sessionBills.length === 0 || (sessionBills.length > 0 && (!vatNumberChecked || !formData.companyName))) && (
+            <div className="space-y-6">
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <Building className="h-5 w-5 text-blue-600" />
+                    Company Information
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  {/* VAT Number Field */}
+                  <div className="relative" ref={suggestionRef}>
+                    <Label htmlFor="companyVatNumber" className="flex items-center gap-2 mb-2">
+                      <Hash className="h-4 w-4 text-gray-500" />
+                      VAT Number*
+                    </Label>
+                    <Input
+                      id="companyVatNumber"
+                      name="companyVatNumber"
+                      value={formData.companyVatNumber}
+                      onChange={handleChange}
+                      placeholder="Enter VAT number"
+                      className="h-12 text-lg"
+                    />
+                    
+                    {vatNumberChecked && isNewCompany && !registering && (
+                      <div className="mt-2 p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
+                        <p className="text-yellow-700 text-sm mb-2">Company not registered</p>
+                        <Button
+                          type="button"
+                          onClick={registerCompany}
+                          size="sm"
+                          className="bg-yellow-600 hover:bg-yellow-700"
+                        >
+                          Register this company
+                        </Button>
+                      </div>
+                    )}
+                    
+                    {showSuggestions && (
+                      <Card className="absolute z-10 mt-1 w-full max-h-60 overflow-auto">
+                        <CardContent className="p-0">
+                          {suggestions.map((company) => (
+                            <div
+                              key={company.id}
+                              onClick={() => selectCompany(company)}
+                              className="cursor-pointer px-4 py-3 hover:bg-gray-50 border-b border-gray-100 last:border-0"
+                            >
+                              <p className="font-medium text-sm">{company.vatNumber}</p>
+                              <p className="text-xs text-gray-500">{company.name}</p>
+                            </div>
+                          ))}
+                        </CardContent>
+                      </Card>
+                    )}
+                  </div>
+                  
+                  {/* Company Name Field */}
+                  <div>
+                    <div className="flex items-center justify-between mb-2">
+                      <Label htmlFor="companyName" className="flex items-center gap-2">
+                        <Building className="h-4 w-4 text-gray-500" />
+                        Company Name*
+                      </Label>
+                      {vatNumberChecked && !isNewCompany && !registering && !editing && (
+                        <Button
+                          type="button"
+                          onClick={enableEditing}
+                          variant="ghost"
+                          size="sm"
+                          className="text-xs text-blue-600 hover:text-blue-800 h-auto p-1"
+                        >
+                          <Edit className="h-3 w-3 mr-1" />
+                          Edit
+                        </Button>
+                      )}
+                    </div>
+                    <Input
+                      id="companyName"
+                      name="companyName"
+                      value={formData.companyName}
+                      onChange={handleChange}
+                      disabled={!vatNumberChecked || (!isNewCompany && !registering && !editing)}
+                      placeholder="Enter company name"
+                      className={`h-12 text-lg ${
+                        !vatNumberChecked || (!isNewCompany && !registering && !editing)
+                          ? "bg-gray-100 text-gray-500"
+                          : ""
+                      }`}
+                    />
+                  </div>
+                  
+                  {/* Address Field */}
+                  <div>
+                    <Label htmlFor="companyAddress" className="flex items-center gap-2 mb-2">
+                      <MapPin className="h-4 w-4 text-gray-500" />
+                      Address*
+                    </Label>
+                    <Textarea
+                      id="companyAddress"
+                      name="companyAddress"
+                      value={formData.companyAddress}
+                      onChange={handleChange}
+                      disabled={!vatNumberChecked || (!isNewCompany && !registering && !editing)}
+                      rows={3}
+                      placeholder="Enter company address"
+                      className={`text-lg ${
+                        !vatNumberChecked || (!isNewCompany && !registering && !editing)
+                          ? "bg-gray-100 text-gray-500"
+                          : ""
+                      }`}
+                    />
+                  </div>
+                  
+                  {/* Invoice Date Field */}
+                  <div>
+                    <Label htmlFor="invoiceDate" className="flex items-center gap-2 mb-2">
+                      <Calendar className="h-4 w-4 text-gray-500" />
+                      Invoice Date*
+                    </Label>
+                    <Input
+                      type="date"
+                      id="invoiceDate"
+                      name="invoiceDate"
+                      value={formData.invoiceDate}
+                      onChange={handleChange}
+                      className="h-12 text-lg"
+                    />
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* Scan Bills Button */}
+              {sessionBills.length === 0 && (
+                <Card className="bg-gradient-to-r from-blue-600 to-blue-700 border-0">
+                  <CardContent className="p-0">
+                    <Button
+                      onClick={openCamera}
+                      className="w-full h-16 bg-transparent hover:bg-white/10 text-white font-medium text-lg"
+                    >
+                      <CameraIcon className="h-6 w-6 mr-3" />
+                      Scan Your First Bill
+                    </Button>
+                  </CardContent>
+                </Card>
+              )}
+            </div>
+          )}
+
+          {/* Invoice Generator */}
+          {sessionBills.length > 0 && vatNumberChecked && formData.companyName && (
+            <div className="mt-6">
+              <InvoiceGenerator
+                bills={sessionBills}
+                companyName={formData.companyName}
+                companyVatNumber={formData.companyVatNumber}
+                onSuccess={handleInvoiceSuccess}
+                onError={handleInvoiceError}
+                onPreviewStateChange={setInvoicePreviewActive}
+              />
+            </div>
+          )}
+        </div>
       )}
     </div>
   );
