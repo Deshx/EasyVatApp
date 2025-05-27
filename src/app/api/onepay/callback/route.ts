@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { onepayService, OnePayCallbackData } from '@/lib/services/onepayService';
+import { paymentService } from '@/lib/services/paymentService';
 
 export async function POST(request: NextRequest) {
   try {
@@ -45,15 +46,17 @@ async function processPaymentCallback(data: OnePayCallbackData) {
         statusMessage: data.status_message
       });
       
-      // TODO: Update your database to record successful payment
-      // Example:
-      // await recordSuccessfulPayment({
-      //   userId: userId,
-      //   transactionId: data.transaction_id,
-      //   amount: // You'll need to get this from your transaction record
-      //   currency: 'LKR',
-      //   status: 'success'
-      // });
+      // Get global settings to determine amount
+      const settings = await paymentService.getGlobalSettings();
+      
+      // Process successful payment using payment service
+      await paymentService.processSuccessfulPayment(
+        userId,
+        data.transaction_id,
+        settings.subscriptionAmount
+      );
+      
+      console.log('Payment processed successfully for user:', userId);
       
     } else {
       // Payment failed or pending
@@ -64,12 +67,42 @@ async function processPaymentCallback(data: OnePayCallbackData) {
         statusMessage: data.status_message
       });
       
-      // TODO: Handle failed/pending payment
-      // await handleFailedPayment(userId, data.transaction_id, data.status_message);
+      // Record failed payment
+      await paymentService.recordPayment({
+        userId: userId,
+        transactionId: data.transaction_id,
+        amount: 0, // Amount not available in failed callback
+        currency: 'LKR',
+        status: data.status === 0 ? 'pending' : 'failed',
+        paymentMethod: 'onepay',
+        description: `Payment ${data.status === 0 ? 'pending' : 'failed'}: ${data.status_message}`,
+        metadata: { 
+          onePayStatus: data.status,
+          statusMessage: data.status_message 
+        }
+      });
     }
   } catch (error) {
     console.error('Error processing OnePay callback:', error);
     // Don't throw here as we want to return success to OnePay
-    // You might want to implement a retry mechanism or dead letter queue
+    // Log the error for investigation
+    try {
+      await paymentService.recordPayment({
+        userId: userId || 'unknown',
+        transactionId: data.transaction_id,
+        amount: 0,
+        currency: 'LKR',
+        status: 'failed',
+        paymentMethod: 'onepay',
+        description: 'Payment processing failed due to system error',
+        metadata: { 
+          error: error instanceof Error ? error.message : 'Unknown error',
+          onePayStatus: data.status,
+          statusMessage: data.status_message 
+        }
+      });
+    } catch (logError) {
+      console.error('Failed to log payment error:', logError);
+    }
   }
 } 

@@ -7,9 +7,10 @@ import Link from "next/link";
 import { doc, getDoc } from "firebase/firestore";
 import { db } from "@/lib/firebase/firebase";
 import { FuelPricesDisplay } from "@/components/ui/FuelPricesDisplay";
+import { SubscriptionGate } from "@/components/ui/SubscriptionGate";
 
 export default function Dashboard() {
-  const { user, loading, error, signOut, profileStatus, isSuperAdmin } = useAuth();
+  const { user, loading, error, signOut, profileStatus } = useAuth();
   const router = useRouter();
   const [signOutLoading, setSignOutLoading] = useState(false);
 
@@ -70,6 +71,34 @@ export default function Dashboard() {
   }
 
   return (
+    <SubscriptionGate>
+      <DashboardContent 
+        user={user}
+        error={error}
+        handleCreateInvoice={handleCreateInvoice}
+        handleSignOut={handleSignOut}
+        signOutLoading={signOutLoading}
+      />
+    </SubscriptionGate>
+  );
+}
+
+function DashboardContent({ 
+  user, 
+  error, 
+  handleCreateInvoice, 
+  handleSignOut, 
+  signOutLoading 
+}: {
+  user: any;
+  error: string | null;
+  handleCreateInvoice: () => void;
+  handleSignOut: () => Promise<void>;
+  signOutLoading: boolean;
+}) {
+  const { isSuperAdmin } = useAuth();
+
+  return (
     <main className="min-h-screen p-4 md:p-8 bg-gray-50">
       <div className="max-w-xl mx-auto">
         <div className="flex flex-col items-center mb-6">
@@ -106,15 +135,26 @@ export default function Dashboard() {
 
         <div className="flex flex-col gap-4 mb-8">
           {isSuperAdmin && (
-            <Link 
-              href="/fuel-prices" 
-              className="flex items-center justify-center py-4 bg-green-600 text-white font-medium rounded-xl hover:bg-green-700 transition-colors shadow-md"
-            >
-              <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4" />
-              </svg>
-              Manage Fuel Prices
-            </Link>
+            <>
+              <Link 
+                href="/admin" 
+                className="flex items-center justify-center py-4 bg-purple-600 text-white font-medium rounded-xl hover:bg-purple-700 transition-colors shadow-md"
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197m13.5-9a2.5 2.5 0 11-5 0 2.5 2.5 0 015 0z" />
+                </svg>
+                Super Admin Panel
+              </Link>
+              <Link 
+                href="/fuel-prices" 
+                className="flex items-center justify-center py-4 bg-green-600 text-white font-medium rounded-xl hover:bg-green-700 transition-colors shadow-md"
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4" />
+                </svg>
+                Manage Fuel Prices
+              </Link>
+            </>
           )}
           
           <button 

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { onepayService, OnePaySubscriptionData } from '@/lib/services/onepayService';
+import { paymentService } from '@/lib/services/paymentService';
 
 export async function POST(request: NextRequest) {
   try {
@@ -19,20 +20,23 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // Set up subscription data for 10K monthly billing
+    // Get global settings for subscription amount
+    const globalSettings = await paymentService.getGlobalSettings();
+
+    // Set up subscription data
     const subscriptionData: OnePaySubscriptionData = {
       orderId: onepayService.generateOrderReference(body.userId),
-      amount: 10000, // 10K as requested
-      currency: 'LKR',
+      amount: globalSettings.subscriptionAmount,
+      currency: globalSettings.currency,
       firstName: body.firstName,
       lastName: body.lastName,
       email: body.email,
       phone: body.phone,
       userId: body.userId || '',
-      interval: 'MONTH',
-      intervalCount: 1, // Every 1 month
-      daysUntilDue: 5,
-      trialPeriodDays: 0,
+      interval: globalSettings.interval,
+      intervalCount: 1,
+      daysUntilDue: globalSettings.gracePeriodDays,
+      trialPeriodDays: globalSettings.trialPeriodDays,
       additionalData: body.userId || ''
     };
 
@@ -60,12 +64,6 @@ export async function POST(request: NextRequest) {
 
     // Default: Prepare subscription data for OnePay JS
     const onePayData = onepayService.prepareSubscriptionData(subscriptionData);
-
-    // Debug logging (remove in production)
-    if (process.env.NODE_ENV === 'development') {
-      console.log('OnePay Subscription Debug Info:');
-      console.log('Subscription Data:', JSON.stringify(onePayData, null, 2));
-    }
 
     return NextResponse.json({
       success: true,

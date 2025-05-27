@@ -67,16 +67,7 @@ class OnePayService {
       .update(hashString)
       .digest('hex');
 
-    // Debug logging (remove in production)
-    if (process.env.NODE_ENV === 'development') {
-      console.log('OnePay Hash Generation Debug:');
-      console.log('- App ID:', this.appId);
-      console.log('- Currency:', currency);
-      console.log('- Amount Formatted:', amountFormatted);
-      console.log('- Hash Salt:', this.hashSalt);
-      console.log('- Hash String:', hashString);
-      console.log('- Final Hash:', hash);
-    }
+    // Debug logging removed to prevent dev console auto-opening
     
     return hash;
   }
@@ -219,15 +210,7 @@ class OnePayService {
   prepareSubscriptionData(data: OnePaySubscriptionData) {
     const formattedPhone = this.formatPhoneNumber(data.phone);
 
-    // Debug logging (remove in production)
-    if (process.env.NODE_ENV === 'development') {
-      console.log('OnePay Subscription Data Preparation:');
-      console.log('- Original Phone:', data.phone);
-      console.log('- Formatted Phone:', formattedPhone);
-      console.log('- App ID:', this.appId);
-      console.log('- Amount:', data.amount);
-      console.log('- Currency:', data.currency);
-    }
+    // Debug logging removed to prevent dev console auto-opening
 
     // OnePay JS SDK subscription format - as per documentation + required name field
     return {
@@ -305,16 +288,7 @@ class OnePayService {
         return_url: urls.transactionRedirectUrl
       };
 
-      // Debug logging
-      if (process.env.NODE_ENV === 'development') {
-        console.log('OnePay Direct API Subscription Request:');
-        console.log('URL: https://api.onepay.lk/v3/subscription/');
-        console.log('Headers:', {
-          'Content-Type': 'application/json',
-          'Authorization': this.appToken.substring(0, 20) + '...'
-        });
-        console.log('Body:', JSON.stringify(requestBody, null, 2));
-      }
+      // Debug logging removed to prevent dev console auto-opening
 
       const response = await fetch('https://api.onepay.lk/v3/subscription/', {
         method: 'POST',

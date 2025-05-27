@@ -5,6 +5,7 @@ import { useAuth } from "@/lib/hooks/useAuth";
 import { useRouter, useParams } from "next/navigation";
 import InvoiceForm from "@/components/ui/InvoiceForm";
 import { InvoiceSessionProvider } from "@/lib/contexts/InvoiceSessionContext";
+import { SubscriptionGate } from "@/components/ui/SubscriptionGate";
 
 export default function CreateInvoice() {
   const { user, loading } = useAuth();
@@ -50,16 +51,18 @@ export default function CreateInvoice() {
   }
 
   return (
-    <main className="min-h-screen p-4 md:p-8 bg-gray-50">
-      <div className="max-w-4xl mx-auto">
-        <div className="mb-6">
-          <h1 className="text-2xl md:text-3xl font-bold">Create Invoice</h1>
-          <p className="text-sm text-gray-600 mt-1">Session ID: {sessionId}</p>
+    <SubscriptionGate>
+      <main className="min-h-screen p-4 md:p-8 bg-gray-50">
+        <div className="max-w-4xl mx-auto">
+          <div className="mb-6">
+            <h1 className="text-2xl md:text-3xl font-bold">Create Invoice</h1>
+            <p className="text-sm text-gray-600 mt-1">Session ID: {sessionId}</p>
+          </div>
+          <InvoiceSessionProvider sessionId={sessionId}>
+            <InvoiceForm />
+          </InvoiceSessionProvider>
         </div>
-        <InvoiceSessionProvider sessionId={sessionId}>
-          <InvoiceForm />
-        </InvoiceSessionProvider>
-      </div>
-    </main>
+      </main>
+    </SubscriptionGate>
   );
 } 

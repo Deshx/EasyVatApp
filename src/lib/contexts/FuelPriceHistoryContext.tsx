@@ -259,10 +259,14 @@ export function FuelPriceHistoryProvider({ children }: { children: React.ReactNo
     return priceHistory.filter(entry => entry.isActive);
   };
 
-  // Initial fetch on component mount
+  // Initial fetch on component mount - only if user is authenticated
   useEffect(() => {
-    fetchHistory();
-  }, []);
+    if (user) {
+      fetchHistory();
+    } else {
+      setLoading(false);
+    }
+  }, [user]);
 
   return (
     <FuelPriceHistoryContext.Provider

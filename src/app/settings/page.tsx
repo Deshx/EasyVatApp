@@ -2,22 +2,32 @@
 
 import { useState, useEffect } from "react";
 import { useAuth } from "@/lib/hooks/useAuth";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { StationProfileForm } from "@/components/ui/StationProfileForm";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
-import PayHereButton from "@/components/ui/PayHereButton";
+import { PaymentsTab } from "@/components/ui/PaymentsTab";
 
 export default function Settings() {
   const { user, loading, error } = useAuth();
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [formSubmitted, setFormSubmitted] = useState(false);
+  const [activeTab, setActiveTab] = useState("profile");
 
   useEffect(() => {
     // Redirect to login if not authenticated
     if (!loading && !user) {
       router.push("/login");
     }
-      }, [user, loading, router]);
+  }, [user, loading, router]);
+
+  useEffect(() => {
+    // Check for tab parameter in URL
+    const tab = searchParams.get('tab');
+    if (tab && (tab === 'profile' || tab === 'payments')) {
+      setActiveTab(tab);
+    }
+  }, [searchParams]);
 
 
 
@@ -63,7 +73,7 @@ export default function Settings() {
         )}
 
         <div className="bg-white shadow rounded-xl p-6">
-          <Tabs defaultValue="profile" className="w-full">
+          <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
             <TabsList className="grid w-full grid-cols-2">
               <TabsTrigger value="profile">Profile</TabsTrigger>
               <TabsTrigger value="payments">Payments</TabsTrigger>
@@ -84,23 +94,10 @@ export default function Settings() {
               <div>
                 <h2 className="text-xl font-semibold mb-4">Payments</h2>
                 <p className="text-gray-600 mb-6">
-                  Manage your payment settings and subscriptions.
+                  Manage your subscription and payment history.
                 </p>
                 
-                <div className="p-4 border border-gray-200 rounded-lg">
-                  <h3 className="text-lg font-medium mb-2">Make a Payment</h3>
-                  <p className="text-sm text-gray-600 mb-4">
-                    Use the secure payment gateway below to make payments.
-                  </p>
-                  
-                  <PayHereButton payId="o1d31073b" />
-                  
-                  <div className="mt-4 p-3 bg-gray-50 rounded text-sm">
-                    <p className="text-gray-600 mb-2">Payment Information:</p>
-                    <p className="text-xs text-gray-500">Secure payments powered by PayHere</p>
-                    <p className="text-xs text-gray-500">All transactions are encrypted and secure</p>
-                  </div>
-                </div>
+                <PaymentsTab />
               </div>
             </TabsContent>
           </Tabs>

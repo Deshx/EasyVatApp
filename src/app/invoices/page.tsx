@@ -24,6 +24,7 @@ import { Search, Eye, ChevronLeft, ChevronRight } from "lucide-react";
 import { DatePicker } from "@/components/ui/date-picker";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Checkbox } from "@/components/ui/checkbox";
+import { SubscriptionGate } from "@/components/ui/SubscriptionGate";
 
 interface InvoiceData {
   id: string;
@@ -562,18 +563,19 @@ export default function InvoicesPage() {
   }
 
   return (
-    <main className="min-h-screen p-4 md:p-8 bg-gray-50">
-      <div className="max-w-7xl mx-auto">
-        {/* Header */}
-        <div className="flex justify-between items-center mb-6">
-          <h1 className="text-2xl md:text-3xl font-bold">View Invoices</h1>
-          <Link 
-            href="/dashboard" 
-            className="inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md shadow-sm text-gray-700 bg-white hover:bg-gray-50"
-          >
-            Back to Dashboard
-          </Link>
-        </div>
+    <SubscriptionGate>
+      <main className="min-h-screen p-4 md:p-8 bg-gray-50">
+        <div className="max-w-7xl mx-auto">
+          {/* Header */}
+          <div className="flex justify-between items-center mb-6">
+            <h1 className="text-2xl md:text-3xl font-bold">View Invoices</h1>
+            <Link 
+              href="/dashboard" 
+              className="inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md shadow-sm text-gray-700 bg-white hover:bg-gray-50"
+            >
+              Back to Dashboard
+            </Link>
+          </div>
 
         {/* Filters and Search */}
         <div className="bg-white rounded-lg shadow-md p-6 mb-6">
@@ -802,5 +804,6 @@ export default function InvoicesPage() {
         )}
       </div>
     </main>
+    </SubscriptionGate>
   );
 } 

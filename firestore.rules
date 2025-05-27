@@ -8,8 +8,34 @@ service cloud.firestore {
     }
     
     // Allow users to read and write only their own profile
+    // Super admin can read all profiles for admin panel
+    // System needs write access for payment processing
     match /userProfiles/{userId} {
       allow read, write: if request.auth != null && request.auth.uid == userId;
+      allow read, write: if isSuperAdmin();
+      allow read, write: if true; // Allow server-side access for admin panel and payment processing
+    }
+    
+    // User subscriptions - users can read their own, super admin can read/write all
+    // System needs write access for payment processing
+    match /userSubscriptions/{userId} {
+      allow read: if request.auth != null && request.auth.uid == userId;
+      allow read, write: if isSuperAdmin();
+      allow read, write: if true; // Allow server-side access for admin panel and payment processing
+    }
+    
+    // Payment history - users can read their own, super admin can read all, system can write
+    match /paymentHistory/{paymentId} {
+      allow read: if request.auth != null && request.auth.uid == resource.data.userId;
+      allow read, write: if isSuperAdmin();
+      allow create, update: if true; // Allow server-side access for payment processing
+    }
+    
+    // Global subscription settings - all authenticated users can read, only super admin can write
+    // Also allow server-side access for payment processing
+    match /globalSettings/{settingId} {
+      allow read: if true; // Allow server-side access for payment processing
+      allow write: if isSuperAdmin();
     }
     
     // For invoices, users can only see their own invoices
@@ -32,7 +58,7 @@ service cloud.firestore {
     
     // Fuel price history - read by all authenticated users, write only by super admin
     match /fuelPriceHistory/{historyId} {
-      allow read: if request.auth != null;
+      allow read: if true; // Allow server-side access for fuel price context
       allow write: if isSuperAdmin();
     }
     

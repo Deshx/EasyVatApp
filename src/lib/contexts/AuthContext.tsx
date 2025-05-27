@@ -11,6 +11,7 @@ import {
 import { auth } from "../firebase/firebase";
 import { doc, getDoc, setDoc } from "firebase/firestore";
 import { db } from "../firebase/firebase";
+import { paymentService } from "@/lib/services/paymentService";
 
 // Simple state enum for user profile status
 type ProfileStatus = "unknown" | "new" | "complete";
@@ -25,6 +26,8 @@ interface AuthContextType {
   profileStatus: ProfileStatus;
   refreshProfileStatus: () => Promise<void>;
   isSuperAdmin: boolean;
+  hasActiveSubscription: boolean;
+  subscriptionLoading: boolean;
 }
 
 const AuthContext = createContext<AuthContextType>({
@@ -37,6 +40,8 @@ const AuthContext = createContext<AuthContextType>({
   profileStatus: "unknown",
   refreshProfileStatus: async () => {},
   isSuperAdmin: false,
+  hasActiveSubscription: false,
+  subscriptionLoading: true,
 });
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
@@ -45,10 +50,43 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [error, setError] = useState<string | null>(null);
   const [profileStatus, setProfileStatus] = useState<ProfileStatus>("unknown");
   const [isSuperAdmin, setIsSuperAdmin] = useState(false);
+  const [hasActiveSubscription, setHasActiveSubscription] = useState(false);
+  const [subscriptionLoading, setSubscriptionLoading] = useState(true);
 
   // Check if user is super admin
   const checkSuperAdmin = (email: string | null) => {
     return email === "oceans.deshan@gmail.com";
+  };
+
+  // Check subscription status
+  const checkSubscriptionStatus = async (currentUser: User): Promise<boolean> => {
+    try {
+      setSubscriptionLoading(true);
+      
+      // Super admin always has access
+      if (checkSuperAdmin(currentUser.email)) {
+        return true;
+      }
+      
+      const isActive = await paymentService.isSubscriptionActive(currentUser.uid);
+      
+      if (!isActive) {
+        // Check if user has a subscription record, if not create default
+        const subscription = await paymentService.getUserSubscription(currentUser.uid);
+        if (!subscription) {
+          await paymentService.createDefaultSubscription(currentUser.uid, currentUser.email || '');
+          // Recheck after creating default
+          return await paymentService.isSubscriptionActive(currentUser.uid);
+        }
+      }
+      
+      return isActive;
+    } catch (error) {
+      console.error('Error checking subscription status:', error);
+      return false;
+    } finally {
+      setSubscriptionLoading(false);
+    }
   };
 
   // Check and update profile status
@@ -111,9 +149,27 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         
         const status = await checkProfileStatus(currentUser);
         setProfileStatus(status);
+        
+        // Check subscription status
+        const subscriptionActive = await checkSubscriptionStatus(currentUser);
+        setHasActiveSubscription(subscriptionActive);
+        
+        // Update last login
+        try {
+          await paymentService.updateUserProfile({
+            uid: currentUser.uid,
+            email: currentUser.email || '',
+            displayName: currentUser.displayName || '',
+            lastLoginAt: new Date()
+          });
+        } catch (error) {
+          console.error('Error updating last login:', error);
+        }
       } else {
         setProfileStatus("unknown");
         setIsSuperAdmin(false);
+        setHasActiveSubscription(false);
+        setSubscriptionLoading(false);
       }
       
       setLoading(false);
@@ -150,6 +206,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       // Check profile status after sign-in
       const status = await checkProfileStatus(result.user);
       setProfileStatus(status);
+      
+      // Check subscription status
+      const subscriptionActive = await checkSubscriptionStatus(result.user);
+      setHasActiveSubscription(subscriptionActive);
     } catch (error: any) {
       console.error("Error signing in with Google:", error);
       
@@ -183,6 +243,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       await firebaseSignOut(auth);
       setProfileStatus("unknown");
       setIsSuperAdmin(false);
+      setHasActiveSubscription(false);
+      setSubscriptionLoading(false);
     } catch (error: any) {
       const errorMessage = error.message || "Failed to sign out";
       setError(errorMessage);
@@ -204,7 +266,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         clearError,
         profileStatus,
         refreshProfileStatus,
-        isSuperAdmin
+        isSuperAdmin,
+        hasActiveSubscription,
+        subscriptionLoading
       }}
     >
       {children}
