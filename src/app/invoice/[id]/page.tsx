@@ -24,7 +24,8 @@ interface InvoiceItem {
 }
 
 interface InvoiceData {
-  id: string;
+  id: string; // Firestore document ID
+  invoiceId?: string; // Custom invoice ID (EV-XXX-YYYY-0001 format)
   companyName: string;
   companyAddress: string;
   companyVatNumber: string;
@@ -260,7 +261,7 @@ export default function InvoicePage({ params }: { params: { id: string } }) {
         const url = URL.createObjectURL(blob);
         const link = document.createElement('a');
         link.href = url;
-        link.download = `invoice-${invoice.id}.pdf`;
+        link.download = `invoice-${invoice.invoiceId || invoice.id}.pdf`;
         document.body.appendChild(link);
         link.click();
         document.body.removeChild(link);
@@ -282,7 +283,7 @@ export default function InvoicePage({ params }: { params: { id: string } }) {
       }
       
       // Create File object for Web Share API
-      const file = new File([pdfBlob], `invoice-${invoice.id}.pdf`, {
+      const file = new File([pdfBlob], `invoice-${invoice.invoiceId || invoice.id}.pdf`, {
         type: 'application/pdf'
       });
       
@@ -291,7 +292,7 @@ export default function InvoicePage({ params }: { params: { id: string } }) {
         try {
           await navigator.share({
             title: 'VAT Invoice',
-            text: `Invoice #${invoice.id} from ${invoice.userProfile.companyName}`,
+            text: `Invoice ${invoice.invoiceId || invoice.id} from ${invoice.userProfile.companyName}`,
             files: [file]
           });
           console.log('PDF shared successfully via Web Share API!');
@@ -308,7 +309,7 @@ export default function InvoicePage({ params }: { params: { id: string } }) {
       if (!shareUrl) {
         // If no PDF URL exists, we'd need to upload the blob to get a shareable URL
         // For now, we'll use a text-only share with invoice details
-        const invoiceText = `Invoice #${invoice.id} from ${invoice.userProfile.companyName}
+        const invoiceText = `Invoice ${invoice.invoiceId || invoice.id} from ${invoice.userProfile.companyName}
 Date: ${invoice.invoiceDate}
 Total: Rs ${invoice.total.toFixed(2)}
 
@@ -338,13 +339,13 @@ Download PDF: ${window.location.href}`;
       }
       
       // If PDF URL exists, share it
-      const shareText = `Invoice #${invoice.id} from ${invoice.userProfile.companyName} - ${shareUrl}`;
+      const shareText = `Invoice ${invoice.invoiceId || invoice.id} from ${invoice.userProfile.companyName} - ${shareUrl}`;
       
       if (navigator.share) {
         try {
           await navigator.share({
             title: 'VAT Invoice',
-            text: `Invoice #${invoice.id} from ${invoice.userProfile.companyName}`,
+            text: `Invoice ${invoice.invoiceId || invoice.id} from ${invoice.userProfile.companyName}`,
             url: shareUrl
           });
           console.log('PDF URL shared successfully!');
@@ -395,7 +396,7 @@ Download PDF: ${window.location.href}`;
       // Send email using the email service
       const result = await EmailService.sendInvoiceEmail({
         emails,
-        invoiceId: invoice.id,
+        invoiceId: invoice.invoiceId || invoice.id, // Use custom invoice ID if available
         companyName: invoice.userProfile.companyName,
         pdfBuffer
       });
@@ -455,7 +456,7 @@ Download PDF: ${window.location.href}`;
                 href={invoice.pdfUrl}
                 target="_blank"
                 rel="noopener noreferrer"
-                download={`invoice-${invoice.id}.pdf`}
+                download={`invoice-${invoice.invoiceId || invoice.id}.pdf`}
                 className="flex flex-col items-center justify-center p-6 bg-blue-600 hover:bg-blue-700 text-white rounded-lg shadow-lg transition-colors duration-200 no-underline"
               >
                 <Download className="h-8 w-8 mb-3" />
@@ -524,7 +525,7 @@ Download PDF: ${window.location.href}`;
       
       <div className="flex justify-center" ref={invoiceRef}>
         <InvoicePreview
-          invoiceId={invoice.id}
+          invoiceId={invoice.invoiceId || invoice.id} // Use custom invoice ID if available, fallback to document ID
           invoiceDate={invoice.invoiceDate}
           companyName={invoice.companyName}
           companyVatNumber={invoice.companyVatNumber}
@@ -546,7 +547,7 @@ Download PDF: ${window.location.href}`;
         isOpen={emailModalOpen}
         onClose={() => setEmailModalOpen(false)}
         onSend={handleSendEmail}
-        invoiceId={invoice.id}
+        invoiceId={invoice.invoiceId || invoice.id}
         companyName={invoice.userProfile.companyName}
       />
 

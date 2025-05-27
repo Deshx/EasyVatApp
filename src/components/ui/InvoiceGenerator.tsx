@@ -5,6 +5,7 @@ import { doc, getDoc, collection, addDoc, serverTimestamp, getDocs } from 'fireb
 import { db } from '@/lib/firebase/firebase';
 import { BillData } from '@/lib/contexts/InvoiceSessionContext';
 import { useFuelPrices } from '@/lib/contexts/FuelPricesContext';
+import { InvoiceIdService } from '@/lib/services/invoiceIdService';
 import './InvoiceGenerator.css';
 import { useInvoiceSession } from '@/lib/contexts/InvoiceSessionContext';
 
@@ -322,9 +323,13 @@ export default function InvoiceGenerator({
         };
       }
       
+      // Generate the standardized invoice ID using the user's VAT number
+      const customInvoiceId = await InvoiceIdService.generateInvoiceId(profile.vatNumber);
+      
       // Add necessary fields for Firebase
       const firebaseInvoiceData = {
         ...preparedInvoiceData,
+        invoiceId: customInvoiceId, // Add the custom invoice ID
         createdAt: serverTimestamp(),
         status: "issued",
         userProfile: {
@@ -347,7 +352,7 @@ export default function InvoiceGenerator({
         }))
       };
       
-      // Save to Firestore to get the invoice ID and navigate immediately
+      // Save to Firestore to get the document ID and navigate immediately
       const invoiceDocRef = await addDoc(collection(db, "invoices"), firebaseInvoiceData);
       const actualInvoiceId = invoiceDocRef.id;
       

@@ -27,7 +27,8 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { SubscriptionGate } from "@/components/ui/SubscriptionGate";
 
 interface InvoiceData {
-  id: string;
+  id: string; // Firestore document ID
+  invoiceId?: string; // Custom invoice ID (EV-XXX-YYYY-0001 format)
   companyName: string;
   companyVatNumber: string;
   invoiceDate: string;
@@ -254,6 +255,7 @@ export default function InvoicesPage() {
         const data = doc.data();
         const invoice = {
           id: doc.id,
+          invoiceId: data.invoiceId, // Include custom invoice ID
           companyName: data.companyName || '',
           companyVatNumber: data.companyVatNumber || '',
           invoiceDate: data.invoiceDate || '',
@@ -277,6 +279,7 @@ export default function InvoicesPage() {
           const searchLower = searchTerm.toLowerCase();
           include = 
             invoice.id.toLowerCase().includes(searchLower) ||
+      (invoice.invoiceId && invoice.invoiceId.toLowerCase().includes(searchLower)) ||
             invoice.companyName.toLowerCase().includes(searchLower) ||
             invoice.companyVatNumber.toLowerCase().includes(searchLower);
         }
@@ -485,7 +488,7 @@ export default function InvoicesPage() {
         return [
           index + 1, // Serial No
           formatDate(invoice.invoiceDate || ''), // Invoice Date
-          invoice.id, // Tax Invoice No
+                          invoice.invoiceId || invoice.id, // Tax Invoice No - use custom ID if available
           cleanVATNumber, // Purchaser's TIN
           invoice.companyName || '', // Name of the Purchaser
           "Fuel", // Description
@@ -731,7 +734,7 @@ export default function InvoicesPage() {
                         />
                       </TableCell>
                       <TableCell className="font-mono text-sm text-blue-600">
-                        #{invoice.id.slice(0, 8)}...
+                        {invoice.invoiceId || `#${invoice.id.slice(0, 8)}...`}
                       </TableCell>
                       <TableCell className="text-sm">
                         {formatDate(invoice.invoiceDate)}

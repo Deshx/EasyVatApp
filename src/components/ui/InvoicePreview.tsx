@@ -10,7 +10,7 @@ interface InvoiceItem {
 }
 
 interface InvoicePreviewProps {
-  invoiceId: string;
+  invoiceId: string; // This will now be the custom EV-XXX-YYYY-0001 format
   invoiceDate: string;
   companyName: string;
   companyVatNumber: string;
@@ -80,7 +80,7 @@ export default function InvoicePreview({
         <div className="text-center mb-8">
           <h1 className="text-3xl font-bold mb-2">{stationName}</h1>
           <p className="text-base mb-1">{stationAddress}</p>
-          <p className="text-base mb-1">Tel: {stationPhone} | {stationEmail}</p>
+          <p className="text-base mb-1">Tel: {stationPhone} <span style={{textDecoration: 'none'}}>&nbsp;&nbsp;&bull;&nbsp;&nbsp;</span> {stationEmail}</p>
           <p className="text-base">VAT No: {stationVatNumber}</p>
         </div>
         

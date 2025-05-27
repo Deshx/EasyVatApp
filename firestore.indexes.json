@@ -28,13 +28,18 @@
         }
       ]
     },
+
     {
-      "collectionGroup": "userProfiles",
+      "collectionGroup": "invoiceCounters",
       "queryScope": "COLLECTION",
       "fields": [
         {
-          "fieldPath": "createdAt",
-          "order": "DESCENDING"
+          "fieldPath": "vatNumber",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "year",
+          "order": "ASCENDING"
         }
       ]
     }
