@@ -558,6 +558,13 @@ export default function InvoiceGenerator({
               </div>
             </div>
           </div>
+          
+          {/* Footer Message */}
+          <div className="mt-8 text-center">
+            <p className="text-sm text-gray-600 italic">
+              This is a computer generated invoice. No signature required. Thank you for choosing us!
+            </p>
+          </div>
         </div>
         
         <div className="flex space-x-4">

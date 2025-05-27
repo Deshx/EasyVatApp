@@ -11,6 +11,9 @@ import jsPDF from 'jspdf';
 import Link from "next/link";
 import InvoicePreview from "@/components/ui/InvoicePreview";
 import { Download, MessageCircle, Mail } from "lucide-react";
+import EmailModal from "@/components/ui/EmailModal";
+import { EmailService } from "@/lib/services/emailService";
+import { useToast } from "@/components/ui/Toast";
 
 interface InvoiceItem {
   fuelType: string;
@@ -54,7 +57,9 @@ export default function InvoicePage({ params }: { params: { id: string } }) {
   const [pdfGenerating, setPdfGenerating] = useState(false);
   const [pdfGenerated, setPdfGenerated] = useState(false);
   const [sharingWhatsapp, setSharingWhatsapp] = useState(false);
+  const [emailModalOpen, setEmailModalOpen] = useState(false);
   const invoiceRef = useRef<HTMLDivElement>(null);
+  const { showToast, ToastComponent } = useToast();
 
   useEffect(() => {
     // Redirect to login if not authenticated
@@ -363,8 +368,69 @@ Download PDF: ${window.location.href}`;
   };
 
   const handleEmailClient = () => {
-    // Placeholder for email functionality
-    alert("Email functionality coming soon!");
+    setEmailModalOpen(true);
+  };
+
+  const handleSendEmail = async (emails: string[]) => {
+    try {
+      if (!invoice) throw new Error("Invoice not found");
+
+      // Generate PDF blob for email attachment
+      const pdfBlob = await generatePDFBlob();
+      if (!pdfBlob) {
+        throw new Error("Failed to generate PDF");
+      }
+
+      // Convert blob to base64
+      const reader = new FileReader();
+      const pdfBuffer = await new Promise<string>((resolve, reject) => {
+        reader.onload = () => {
+          const base64 = (reader.result as string).split(',')[1];
+          resolve(base64);
+        };
+        reader.onerror = reject;
+        reader.readAsDataURL(pdfBlob);
+      });
+
+      // Send email using the email service
+      const result = await EmailService.sendInvoiceEmail({
+        emails,
+        invoiceId: invoice.id,
+        companyName: invoice.userProfile.companyName,
+        pdfBuffer
+      });
+
+      // Show success toast
+      showToast(
+        result.message || `Email sent successfully to ${emails.length} recipient(s)!`,
+        "success"
+      );
+
+      // Close modal after success
+      setEmailModalOpen(false);
+
+    } catch (error: any) {
+      console.error("Error sending email:", error);
+      
+      // Show error toast
+      const errorMessage = error.message || "Failed to send email";
+      if (errorMessage.includes("only send testing emails")) {
+        showToast(
+          "⚠️ Development Mode: You can only send emails to thehowtofeed@gmail.com. To send to other recipients, verify a domain at resend.com/domains",
+          "warning"
+        );
+      } else if (errorMessage.includes("domain is not verified")) {
+        showToast(
+          "⚠️ Domain not verified. Please verify your domain at resend.com/domains",
+          "warning"
+        );
+      } else {
+        showToast(errorMessage, "error");
+      }
+      
+      // Re-throw error for EmailModal to handle
+      throw error;
+    }
   };
 
   return (
@@ -474,6 +540,18 @@ Download PDF: ${window.location.href}`;
           onPrint={handlePrintInvoice}
         />
       </div>
+
+      {/* Email Modal */}
+      <EmailModal
+        isOpen={emailModalOpen}
+        onClose={() => setEmailModalOpen(false)}
+        onSend={handleSendEmail}
+        invoiceId={invoice.id}
+        companyName={invoice.userProfile.companyName}
+      />
+
+      {/* Toast Notifications */}
+      <ToastComponent />
     </main>
   );
 } 

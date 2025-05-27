@@ -1,5 +1,4 @@
 import "./globals.css";
-import { Toaster } from "@/components/ui/toaster";
 import type { Metadata } from "next";
 import { AuthProvider } from "@/lib/contexts/AuthContext";
 import { FuelPricesProvider } from "@/lib/contexts/FuelPricesContext";
@@ -27,7 +26,6 @@ export default function RootLayout({
             </FuelPriceHistoryProvider>
           </FuelPricesProvider>
         </AuthProvider>
-        <Toaster />
       </body>
     </html>
   );

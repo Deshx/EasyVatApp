@@ -134,6 +134,13 @@ export default function InvoicePreview({
             </div>
           </div>
         </div>
+        
+        {/* Footer Message */}
+        <div className="mt-12 text-center">
+          <p className="text-sm text-gray-600 italic">
+            This is a computer generated invoice. No signature required. Thank you for choosing us!
+          </p>
+        </div>
       </div>
       
       {/* Action Buttons - not printed */}
