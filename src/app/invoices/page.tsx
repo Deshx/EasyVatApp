@@ -20,13 +20,15 @@ import {
   Timestamp
 } from "firebase/firestore";
 import { db } from "@/lib/firebase/firebase";
-import { Search, Eye, ChevronLeft, ChevronRight } from "lucide-react";
+import { Search, Eye, ChevronLeft, ChevronRight, Filter, Download, Calendar, Building, FileText } from "lucide-react";
 import { DatePicker } from "@/components/ui/date-picker";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Checkbox } from "@/components/ui/checkbox";
 import { SubscriptionGate } from "@/components/ui/SubscriptionGate";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Badge } from "@/components/ui/badge";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
 interface InvoiceData {
   id: string; // Firestore document ID
@@ -572,228 +574,356 @@ export default function InvoicesPage() {
 
   return (
     <SubscriptionGate>
-      <main className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100">
-        {/* Mobile Header */}
-        <div className="sticky top-0 z-10 bg-white/95 backdrop-blur-sm border-b border-gray-200">
-          <div className="flex items-center justify-between p-4">
-            <Link href="/dashboard">
-              <Button variant="ghost" size="icon" className="h-10 w-10">
-                <ChevronLeft className="h-5 w-5" />
-              </Button>
-            </Link>
-            
-            <div className="flex-1 text-center">
-              <h1 className="text-lg font-semibold text-gray-900">Invoices</h1>
-              <p className="text-sm text-gray-500">
-                {selectedInvoices.size > 0 ? `${selectedInvoices.size} selected` : `${invoices.length} invoices`}
-              </p>
+      <main className="min-h-screen bg-gray-50">
+        {/* Header */}
+        <div className="bg-white border-b border-gray-200 sticky top-0 z-10">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div className="flex items-center justify-between h-16">
+              <div className="flex items-center space-x-4">
+                <Link href="/dashboard">
+                  <Button variant="ghost" size="icon" className="h-10 w-10">
+                    <ChevronLeft className="h-5 w-5" />
+                  </Button>
+                </Link>
+                <div>
+                  <h1 className="text-2xl font-bold text-gray-900">Invoices</h1>
+                  <p className="text-sm text-gray-500">
+                    {selectedInvoices.size > 0 
+                      ? `${selectedInvoices.size} selected` 
+                      : `${allInvoiceIds.length} total invoices`
+                    }
+                  </p>
+                </div>
+              </div>
+              
+              {/* Header Actions */}
+              <div className="flex items-center space-x-3">
+                {selectedInvoices.size > 0 && (
+                  <Button
+                    onClick={handleDownloadVATSchedule}
+                    className="bg-green-600 hover:bg-green-700 hidden sm:flex"
+                  >
+                    <Download className="h-4 w-4 mr-2" />
+                    <span className="hidden md:inline">Download VAT Schedule</span>
+                    <span className="md:hidden">Download</span>
+                  </Button>
+                )}
+                <Link href="/create-invoice">
+                  <Button className="hidden sm:flex">
+                    <FileText className="h-4 w-4 mr-2" />
+                    <span className="hidden md:inline">Create Invoice</span>
+                    <span className="md:hidden">Create</span>
+                  </Button>
+                </Link>
+              </div>
             </div>
-
-            <div className="w-10" /> {/* Spacer */}
           </div>
         </div>
 
-        <div className="p-4">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
           {error && (
-            <div className="mb-4 p-4 bg-red-50 border border-red-200 rounded-lg">
+            <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg">
               <p className="text-red-700 text-sm">{error}</p>
             </div>
           )}
 
-          {/* Search and Filters - Mobile Optimized */}
-          <div className="mb-6 space-y-4">
-            <div className="flex gap-2">
-              <div className="flex-1">
-                <Input
-                  type="text"
-                  placeholder="Search invoices..."
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  className="h-12"
-                />
-              </div>
-              <Button 
-                onClick={handleSearch}
-                className="h-12 px-6"
-              >
-                <Search className="h-4 w-4" />
-              </Button>
-            </div>
-
-            <div className="flex gap-2">
-              <div className="flex-1">
-                <DatePicker
-                  value={dateFrom}
-                  onChange={setDateFrom}
-                  placeholder="From date"
-                  className="h-12"
-                />
-              </div>
-              <div className="flex-1">
-                <DatePicker
-                  value={dateTo}
-                  onChange={setDateTo}
-                  placeholder="To date"
-                  className="h-12"
-                />
-              </div>
-              <Button 
-                onClick={clearFilters}
-                variant="outline"
-                className="h-12 px-4"
-              >
-                Clear
-              </Button>
-            </div>
-          </div>
-
-          {/* Bulk Actions - Mobile Optimized */}
-          {selectedInvoices.size > 0 && (
-            <div className="mb-4 p-4 bg-blue-50 border border-blue-200 rounded-lg">
-              <div className="flex items-center justify-between">
-                <span className="text-sm font-medium text-blue-900">
-                  {selectedInvoices.size} invoice{selectedInvoices.size > 1 ? 's' : ''} selected
-                </span>
-                <Button
-                  onClick={handleDownloadVATSchedule}
-                  size="sm"
-                  className="bg-blue-600 hover:bg-blue-700"
-                >
-                  Download VAT
-                </Button>
-              </div>
-            </div>
-          )}
-
-          {/* Mobile Invoice Cards */}
-          <div className="space-y-3 md:hidden">
-            {/* Select All Card */}
-            <div className="bg-white rounded-lg border border-gray-200 p-4">
-              <div className="flex items-center gap-3">
-                <Checkbox
-                  checked={selectAll}
-                  onCheckedChange={handleSelectAll}
-                  disabled={loadingSelectAll || invoices.length === 0}
-                />
-                <span className="text-sm font-medium text-gray-700">
-                  {loadingSelectAll ? "Loading..." : "Select All"}
-                  {allInvoiceIds.length > 0 && (
-                    <span className="ml-1 text-xs text-gray-500">
-                      ({allInvoiceIds.length} total)
-                    </span>
-                  )}
-                </span>
-              </div>
-            </div>
-
-            {/* Invoice Cards */}
-            {invoices.map((invoice) => (
-              <div key={invoice.id} className="bg-white rounded-lg border border-gray-200 p-4">
-                <div className="flex items-start gap-3">
-                  <Checkbox
-                    checked={selectedInvoices.has(invoice.id)}
-                    onCheckedChange={(checked) => handleSelectInvoice(invoice.id, checked as boolean)}
-                  />
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center justify-between mb-2">
-                      <h3 className="font-medium text-gray-900 truncate">
-                        {invoice.companyName}
-                      </h3>
-                      <Button
-                        onClick={() => handleViewInvoice(invoice.id)}
-                        size="sm"
-                        variant="outline"
-                        className="h-8 w-8 p-0"
-                      >
-                        <Eye className="h-4 w-4" />
-                      </Button>
-                    </div>
-                    <div className="space-y-1">
-                      <p className="text-sm text-gray-600">
-                        ID: {invoice.invoiceId || invoice.id}
-                      </p>
-                      <p className="text-sm text-gray-600">
-                        VAT: {invoice.companyVatNumber}
-                      </p>
-                      <p className="text-sm text-gray-600">
-                        Date: {formatDate(invoice.invoiceDate)}
-                      </p>
-                      <p className="text-lg font-semibold text-gray-900">
-                        {formatCurrency(invoice.total)}
-                      </p>
-                    </div>
+          {/* Search and Filters Card */}
+          <Card className="mb-6">
+            <CardHeader className="pb-4">
+              <CardTitle className="flex items-center text-lg">
+                <Filter className="h-5 w-5 mr-2" />
+                Search & Filters
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-12 gap-4">
+                {/* Search Input */}
+                <div className="md:col-span-2 lg:col-span-5">
+                  <div className="relative">
+                    <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+                    <Input
+                      type="text"
+                      placeholder="Search by company name, VAT number, or invoice ID..."
+                      value={searchTerm}
+                      onChange={(e) => setSearchTerm(e.target.value)}
+                      className="pl-10 h-11"
+                    />
                   </div>
                 </div>
-              </div>
-            ))}
-          </div>
 
-          {/* Desktop Table (hidden on mobile) */}
-          <div className="hidden md:block bg-white rounded-lg border border-gray-200 overflow-hidden">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead className="w-12">
-                    <Checkbox
-                      checked={selectAll}
-                      onCheckedChange={handleSelectAll}
-                      disabled={loadingSelectAll || invoices.length === 0}
-                    />
-                  </TableHead>
-                  <TableHead>Invoice ID</TableHead>
-                  <TableHead>Company</TableHead>
-                  <TableHead>VAT Number</TableHead>
-                  <TableHead>Date</TableHead>
-                  <TableHead className="text-right">Total</TableHead>
-                  <TableHead className="w-20">Actions</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {invoices.map((invoice) => (
-                  <TableRow key={invoice.id}>
-                    <TableCell>
-                      <Checkbox
-                        checked={selectedInvoices.has(invoice.id)}
-                        onCheckedChange={(checked) => handleSelectInvoice(invoice.id, checked as boolean)}
-                      />
-                    </TableCell>
-                    <TableCell className="font-medium">
-                      {invoice.invoiceId || invoice.id}
-                    </TableCell>
-                    <TableCell>{invoice.companyName}</TableCell>
-                    <TableCell>{invoice.companyVatNumber}</TableCell>
-                    <TableCell>{formatDate(invoice.invoiceDate)}</TableCell>
-                    <TableCell className="text-right">{formatCurrency(invoice.total)}</TableCell>
-                    <TableCell>
-                      <Button
-                        onClick={() => handleViewInvoice(invoice.id)}
-                        size="sm"
-                        variant="outline"
-                      >
-                        <Eye className="h-4 w-4" />
+                {/* Date From */}
+                <div className="md:col-span-1 lg:col-span-2">
+                  <DatePicker
+                    value={dateFrom}
+                    onChange={setDateFrom}
+                    placeholder="From date"
+                    className="h-11"
+                  />
+                </div>
+
+                {/* Date To */}
+                <div className="md:col-span-1 lg:col-span-2">
+                  <DatePicker
+                    value={dateTo}
+                    onChange={setDateTo}
+                    placeholder="To date"
+                    className="h-11"
+                  />
+                </div>
+
+                {/* Action Buttons */}
+                <div className="md:col-span-2 lg:col-span-3 flex gap-2">
+                  <Button 
+                    onClick={handleSearch}
+                    className="flex-1 h-11 bg-blue-600 hover:bg-blue-700"
+                  >
+                    <Search className="h-4 w-4 mr-2" />
+                    Apply Filters
+                  </Button>
+                  <Button 
+                    onClick={clearFilters}
+                    variant="outline"
+                    className="flex-1 h-11"
+                  >
+                    Clear Filters
+                  </Button>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Bulk Actions - Desktop version by default */}
+          {selectedInvoices.size > 0 && (
+            <Card className="mb-4">
+              <CardContent className="p-4">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center space-x-4">
+                    <Badge variant="secondary" className="bg-blue-100 text-blue-800">
+                      {selectedInvoices.size} invoice{selectedInvoices.size > 1 ? 's' : ''} selected
+                    </Badge>
+                    <span className="text-sm text-gray-500 hidden sm:block">
+                      Ready for bulk actions
+                    </span>
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <Button
+                      onClick={() => setSelectedInvoices(new Set())}
+                      variant="outline"
+                      size="sm"
+                      className="hidden sm:flex"
+                    >
+                      Clear Selection
+                    </Button>
+                    <Button
+                      onClick={handleDownloadVATSchedule}
+                      className="bg-green-600 hover:bg-green-700"
+                      size="sm"
+                    >
+                      <Download className="h-4 w-4 mr-2" />
+                      <span className="hidden sm:inline">Download VAT Schedule</span>
+                      <span className="sm:hidden">Download</span>
+                    </Button>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
+          {/* Main Content */}
+          {pageLoading ? (
+            <Card>
+              <CardContent className="p-12">
+                <div className="text-center">
+                  <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500 mx-auto mb-4"></div>
+                  <p className="text-gray-600">Loading invoices...</p>
+                </div>
+              </CardContent>
+            </Card>
+          ) : invoices.length === 0 ? (
+            <Card>
+              <CardContent className="p-12">
+                <div className="text-center">
+                  <FileText className="h-16 w-16 text-gray-300 mx-auto mb-4" />
+                  <h3 className="text-lg font-medium text-gray-900 mb-2">No invoices found</h3>
+                  <p className="text-gray-500 mb-6">
+                    {searchTerm || dateFrom || dateTo 
+                      ? "Try adjusting your search filters or date range."
+                      : "Get started by creating your first invoice."
+                    }
+                  </p>
+                  <div className="flex justify-center space-x-3">
+                    {(searchTerm || dateFrom || dateTo) && (
+                      <Button onClick={clearFilters} variant="outline">
+                        Clear Filters
                       </Button>
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </div>
+                    )}
+                    <Link href="/create-invoice">
+                      <Button>
+                        <FileText className="h-4 w-4 mr-2" />
+                        Create Invoice
+                      </Button>
+                    </Link>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          ) : (
+            <>
+              {/* Desktop Table - Show by default, hide on mobile/tablet */}
+              <Card className="block md:block">
+                <div className="overflow-x-auto">
+                  <Table>
+                    <TableHeader>
+                      <TableRow className="bg-gray-50">
+                        <TableHead className="w-12">
+                          <Checkbox
+                            checked={selectAll}
+                            onCheckedChange={handleSelectAll}
+                            disabled={loadingSelectAll || invoices.length === 0}
+                          />
+                        </TableHead>
+                        <TableHead className="font-semibold">Invoice ID</TableHead>
+                        <TableHead className="font-semibold">Company Name</TableHead>
+                        <TableHead className="font-semibold">VAT Number</TableHead>
+                        <TableHead className="font-semibold">Date</TableHead>
+                        <TableHead className="font-semibold text-right">Total Amount</TableHead>
+                        <TableHead className="font-semibold w-20">Actions</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {invoices.map((invoice) => (
+                        <TableRow 
+                          key={invoice.id} 
+                          className="hover:bg-gray-50 transition-colors"
+                        >
+                          <TableCell>
+                            <Checkbox
+                              checked={selectedInvoices.has(invoice.id)}
+                              onCheckedChange={(checked) => handleSelectInvoice(invoice.id, checked as boolean)}
+                            />
+                          </TableCell>
+                          <TableCell>
+                            <div className="font-medium text-blue-600">
+                              {invoice.invoiceId || invoice.id}
+                            </div>
+                          </TableCell>
+                          <TableCell>
+                            <div className="font-medium text-gray-900">
+                              {invoice.companyName}
+                            </div>
+                          </TableCell>
+                          <TableCell>
+                            <Badge variant="outline" className="text-xs">
+                              {invoice.companyVatNumber}
+                            </Badge>
+                          </TableCell>
+                          <TableCell>
+                            <div className="text-gray-600">
+                              {formatDate(invoice.invoiceDate)}
+                            </div>
+                          </TableCell>
+                          <TableCell className="text-right">
+                            <div className="font-semibold text-gray-900">
+                              {formatCurrency(invoice.total)}
+                            </div>
+                          </TableCell>
+                          <TableCell>
+                            <Button
+                              onClick={() => handleViewInvoice(invoice.id)}
+                              size="sm"
+                              variant="outline"
+                              className="h-8 w-8 p-0"
+                            >
+                              <Eye className="h-4 w-4" />
+                            </Button>
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
+              </Card>
 
-          {/* Empty State */}
-          {invoices.length === 0 && !pageLoading && (
-            <div className="text-center py-12">
-              <div className="bg-white rounded-lg border border-gray-200 p-8">
-                <p className="text-gray-500 mb-4">No invoices found</p>
-                <Link href="/create-invoice">
-                  <Button>Create Your First Invoice</Button>
-                </Link>
+              {/* Mobile and Tablet Invoice Cards - Hidden by default, show only on small screens */}
+              <div className="space-y-4 hidden">
+                {/* Select All Card */}
+                <Card>
+                  <CardContent className="p-4">
+                    <div className="flex items-center space-x-3">
+                      <Checkbox
+                        checked={selectAll}
+                        onCheckedChange={handleSelectAll}
+                        disabled={loadingSelectAll || invoices.length === 0}
+                      />
+                      <span className="text-sm font-medium text-gray-700">
+                        {loadingSelectAll ? "Loading..." : "Select All"}
+                        {allInvoiceIds.length > 0 && (
+                          <span className="ml-1 text-xs text-gray-500">
+                            ({allInvoiceIds.length} total)
+                          </span>
+                        )}
+                      </span>
+                    </div>
+                  </CardContent>
+                </Card>
+
+                {/* Invoice Cards */}
+                {invoices.map((invoice) => (
+                  <Card key={invoice.id} className="hover:shadow-md transition-shadow">
+                    <CardContent className="p-4">
+                      <div className="flex items-start space-x-3">
+                        <Checkbox
+                          checked={selectedInvoices.has(invoice.id)}
+                          onCheckedChange={(checked) => handleSelectInvoice(invoice.id, checked as boolean)}
+                          className="mt-1"
+                        />
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-start justify-between mb-3">
+                            <div>
+                              <h3 className="font-semibold text-gray-900 truncate mb-1">
+                                {invoice.companyName}
+                              </h3>
+                              <Badge variant="outline" className="text-xs">
+                                {invoice.invoiceId || invoice.id}
+                              </Badge>
+                            </div>
+                            <Button
+                              onClick={() => handleViewInvoice(invoice.id)}
+                              size="sm"
+                              variant="outline"
+                              className="h-8 w-8 p-0"
+                            >
+                              <Eye className="h-4 w-4" />
+                            </Button>
+                          </div>
+                          
+                          <div className="space-y-2">
+                            <div className="flex items-center text-sm text-gray-600">
+                              <Building className="h-4 w-4 mr-2 flex-shrink-0" />
+                              <span className="truncate">VAT: {invoice.companyVatNumber}</span>
+                            </div>
+                            <div className="flex items-center text-sm text-gray-600">
+                              <Calendar className="h-4 w-4 mr-2 flex-shrink-0" />
+                              <span>{formatDate(invoice.invoiceDate)}</span>
+                            </div>
+                            <div className="pt-2">
+                              <span className="text-lg font-bold text-gray-900">
+                                {formatCurrency(invoice.total)}
+                              </span>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                ))}
               </div>
-            </div>
+            </>
           )}
 
           {/* Pagination */}
           {(pagination.hasNext || pagination.hasPrev) && (
-            <div className="flex justify-center items-center gap-4 mt-6">
+            <div className="flex justify-center items-center space-x-4 mt-6">
               <Button
                 onClick={handlePrevPage}
                 disabled={!pagination.hasPrev}
@@ -804,9 +934,9 @@ export default function InvoicesPage() {
                 Previous
               </Button>
               
-              <span className="text-sm text-gray-600">
+              <Badge variant="secondary" className="px-3 py-1">
                 Page {pagination.currentPage}
-              </span>
+              </Badge>
               
               <Button
                 onClick={handleNextPage}
@@ -819,6 +949,15 @@ export default function InvoicesPage() {
               </Button>
             </div>
           )}
+
+          {/* Mobile FAB for Create Invoice */}
+          <div className="sm:hidden fixed bottom-6 right-6">
+            <Link href="/create-invoice">
+              <Button size="lg" className="rounded-full h-14 w-14 p-0 shadow-lg">
+                <FileText className="h-6 w-6" />
+              </Button>
+            </Link>
+          </div>
         </div>
       </main>
     </SubscriptionGate>

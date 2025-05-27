@@ -1,15 +1,14 @@
 "use client";
 
-import { useEffect, useState, useRef } from "react";
+import React, { useEffect, useState, useRef } from "react";
 import { useAuth } from "@/lib/hooks/useAuth";
 import { useRouter } from "next/navigation";
 import { doc, getDoc, updateDoc } from "firebase/firestore";
 import { db, storage } from "@/lib/firebase/firebase";
 import { ref, uploadString, getDownloadURL } from 'firebase/storage';
-import html2canvas from 'html2canvas';
 import jsPDF from 'jspdf';
 import Link from "next/link";
-import InvoicePreview from "@/components/ui/InvoicePreview";
+import PDFViewer from "@/components/ui/PDFViewer";
 import { Download, MessageCircle, Mail } from "lucide-react";
 import EmailModal from "@/components/ui/EmailModal";
 import { EmailService } from "@/lib/services/emailService";
@@ -57,9 +56,9 @@ export default function InvoicePage({ params }: { params: { id: string } }) {
   const [error, setError] = useState<string | null>(null);
   const [pdfGenerating, setPdfGenerating] = useState(false);
   const [pdfGenerated, setPdfGenerated] = useState(false);
+  const [pdfPreviewBlob, setPdfPreviewBlob] = useState<Blob | null>(null);
   const [sharingWhatsapp, setSharingWhatsapp] = useState(false);
   const [emailModalOpen, setEmailModalOpen] = useState(false);
-  const invoiceRef = useRef<HTMLDivElement>(null);
   const { showToast, ToastComponent } = useToast();
 
   useEffect(() => {
@@ -116,37 +115,214 @@ export default function InvoicePage({ params }: { params: { id: string } }) {
   useEffect(() => {
     if (invoice && !invoice.pdfUrl && !pdfGenerating && !pdfGenerated) {
       generatePDF();
+    } else if (invoice && invoice.pdfUrl && !pdfPreviewBlob) {
+      // If PDF URL exists but no preview blob, generate preview blob
+      generatePDFBlob().then(blob => {
+        if (blob) {
+          setPdfPreviewBlob(blob);
+        }
+      });
     }
-  }, [invoice, pdfGenerating, pdfGenerated]);
+  }, [invoice, pdfGenerating, pdfGenerated, pdfPreviewBlob]);
 
   const generatePDFBlob = async (): Promise<Blob | null> => {
     if (!invoice) return null;
     
     try {
-      // Find the invoice element
-      const invoiceElement = invoiceRef.current?.querySelector('.invoice-printable');
-      if (!invoiceElement) {
-        console.error("Invoice element not found for PDF generation");
-        return null;
-      }
+      console.log("Starting direct PDF generation for invoice:", invoice.invoiceId || invoice.id);
       
-      // Generate PDF from the element
-      const canvas = await html2canvas(invoiceElement as HTMLElement, {
-        scale: 2, // Higher scale for better quality
-        useCORS: true,
-        logging: false,
-        backgroundColor: 'white'
+      // Create PDF directly using jsPDF
+      const pdf = new jsPDF('p', 'mm', 'a4');
+      const pageWidth = 210; // A4 width in mm
+      const pageHeight = 297; // A4 height in mm
+      const margin = 20; // 20mm margin
+      const contentWidth = pageWidth - (2 * margin);
+      
+      // Helper function to format numbers
+      const formatNumber = (num: number) => num.toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+      
+      // Helper function to format date
+      const formatDate = (dateString: string) => {
+        return new Date(dateString).toLocaleDateString('en-US', {
+          year: 'numeric',
+          month: 'long',
+          day: 'numeric'
+        });
+      };
+      
+      // Helper function to get fuel type name
+      const getFuelTypeDisplayName = (item: InvoiceItem) => {
+        if (item.fuelTypeName) {
+          return item.fuelTypeName.replace(/\s*\(Rs\.\s*[\d.]+\/L\)\s*$/, '').trim();
+        }
+        return item.fuelType || "Unknown Fuel Type";
+      };
+      
+      let yPosition = margin;
+      
+      // Header - Company Name
+      pdf.setFontSize(20);
+      pdf.setFont('helvetica', 'bold');
+      const companyName = invoice.userProfile.companyName;
+      const companyNameWidth = pdf.getStringUnitWidth(companyName) * 20 / pdf.internal.scaleFactor;
+      pdf.text(companyName, (pageWidth - companyNameWidth) / 2, yPosition);
+      yPosition += 10;
+      
+      // Header - Address and Contact
+      pdf.setFontSize(11);
+      pdf.setFont('helvetica', 'normal');
+      const address = invoice.userProfile.address;
+      const addressWidth = pdf.getStringUnitWidth(address) * 11 / pdf.internal.scaleFactor;
+      pdf.text(address, (pageWidth - addressWidth) / 2, yPosition);
+      yPosition += 6;
+      
+      const contact = `Tel: ${invoice.userProfile.phone} | ${invoice.userProfile.email}`;
+      const contactWidth = pdf.getStringUnitWidth(contact) * 11 / pdf.internal.scaleFactor;
+      pdf.text(contact, (pageWidth - contactWidth) / 2, yPosition);
+      yPosition += 6;
+      
+      const vatInfo = `VAT No: ${invoice.userProfile.vatNumber}`;
+      const vatInfoWidth = pdf.getStringUnitWidth(vatInfo) * 11 / pdf.internal.scaleFactor;
+      pdf.text(vatInfo, (pageWidth - vatInfoWidth) / 2, yPosition);
+      yPosition += 20;
+      
+      // Invoice Information Section
+      pdf.setFontSize(11);
+      pdf.setFont('helvetica', 'bold');
+      pdf.text('Invoice ID:', margin, yPosition);
+      pdf.setFont('helvetica', 'normal');
+      pdf.text(invoice.invoiceId || invoice.id, margin + 30, yPosition);
+      
+      pdf.setFont('helvetica', 'bold');
+      pdf.text('Bill To:', margin + 105, yPosition);
+      pdf.setFont('helvetica', 'normal');
+      pdf.text(invoice.companyName, margin + 125, yPosition);
+      yPosition += 6;
+      
+      pdf.setFont('helvetica', 'bold');
+      pdf.text('Date:', margin, yPosition);
+      pdf.setFont('helvetica', 'normal');
+      pdf.text(formatDate(invoice.invoiceDate), margin + 30, yPosition);
+      
+      pdf.setFont('helvetica', 'bold');
+      pdf.text('VAT No:', margin + 105, yPosition);
+      pdf.setFont('helvetica', 'normal');
+      pdf.text(invoice.companyVatNumber, margin + 125, yPosition);
+      yPosition += 20;
+      
+      // Table Header
+      const tableTop = yPosition;
+      const colWidths = [70, 25, 35, 40]; // Column widths in mm - adjusted for better spacing
+      const headers = ['Fuel Type', 'Qty (L)', 'Rate ex-VAT', 'Amount ex-VAT'];
+      
+      // Draw header background and borders
+      pdf.setFillColor(240, 240, 240);
+      pdf.rect(margin, tableTop, contentWidth, 8, 'F');
+      pdf.setDrawColor(0, 0, 0);
+      pdf.setLineWidth(0.5);
+      pdf.rect(margin, tableTop, contentWidth, 8);
+      
+      // Header text
+      pdf.setFontSize(10);
+      pdf.setFont('helvetica', 'bold');
+      let xPos = margin + 2;
+      headers.forEach((header, index) => {
+        if (index === 0) {
+          pdf.text(header, xPos, tableTop + 5.5);
+        } else {
+          // Right align numbers with proper padding
+          const headerWidth = pdf.getStringUnitWidth(header) * 10 / pdf.internal.scaleFactor;
+          pdf.text(header, xPos + colWidths[index] - headerWidth - 3, tableTop + 5.5);
+        }
+        if (index < headers.length - 1) {
+          pdf.line(xPos + colWidths[index], tableTop, xPos + colWidths[index], tableTop + 8);
+        }
+        xPos += colWidths[index];
       });
       
-      const imgData = canvas.toDataURL('image/jpeg', 0.95);
-      const pdf = new jsPDF('p', 'mm', 'a4');
-      const imgWidth = 210; // A4 width in mm
-      const imgHeight = canvas.height * imgWidth / canvas.width;
+      yPosition = tableTop + 8;
       
-      pdf.addImage(imgData, 'JPEG', 0, 0, imgWidth, imgHeight);
+      // Table Rows
+      pdf.setFont('helvetica', 'normal');
+      invoice.items.forEach((item, index) => {
+        // Draw row border
+        pdf.rect(margin, yPosition, contentWidth, 7);
+        
+        // Row data
+        xPos = margin + 2;
+        const rowData = [
+          getFuelTypeDisplayName(item),
+          formatNumber(item.quantityLitres),
+          formatNumber(item.marketRate),
+          formatNumber(item.amount)
+        ];
+        
+        rowData.forEach((data, colIndex) => {
+          if (colIndex === 0) {
+            pdf.text(data, xPos, yPosition + 4.5);
+          } else {
+            // Right align numbers with proper padding
+            const dataWidth = pdf.getStringUnitWidth(data) * 10 / pdf.internal.scaleFactor;
+            pdf.text(data, xPos + colWidths[colIndex] - dataWidth - 3, yPosition + 4.5);
+          }
+          
+          // Draw column separator
+          if (colIndex < rowData.length - 1) {
+            pdf.line(xPos + colWidths[colIndex], yPosition, xPos + colWidths[colIndex], yPosition + 7);
+          }
+          xPos += colWidths[colIndex];
+        });
+        
+        yPosition += 7;
+      });
       
-      // Return as blob instead of data URI
+      yPosition += 15;
+      
+      // Totals Section - Aligned to right edge of table
+      const tableRightEdge = margin + contentWidth;
+      const totalsWidth = 50; // Width of totals section
+      const totalsLeftStart = tableRightEdge - totalsWidth;
+      
+      pdf.setFont('helvetica', 'bold');
+      pdf.text('Sub-total:', totalsLeftStart, yPosition);
+      pdf.setFont('helvetica', 'normal');
+      const subTotalText = formatNumber(invoice.subTotal);
+      const subTotalWidth = pdf.getStringUnitWidth(subTotalText) * 10 / pdf.internal.scaleFactor;
+      pdf.text(subTotalText, tableRightEdge - subTotalWidth, yPosition);
+      yPosition += 6;
+      
+      pdf.setFont('helvetica', 'bold');
+      pdf.text('VAT 18%:', totalsLeftStart, yPosition);
+      pdf.setFont('helvetica', 'normal');
+      const vatText = formatNumber(invoice.vat18);
+      const vatWidth = pdf.getStringUnitWidth(vatText) * 10 / pdf.internal.scaleFactor;
+      pdf.text(vatText, tableRightEdge - vatWidth, yPosition);
+      yPosition += 6;
+      
+      // Total line - aligned with totals section
+      pdf.setLineWidth(1);
+      pdf.line(totalsLeftStart, yPosition, tableRightEdge, yPosition);
+      yPosition += 6;
+      
+      pdf.setFont('helvetica', 'bold');
+      pdf.text('Total:', totalsLeftStart, yPosition);
+      const totalText = formatNumber(invoice.total);
+      const totalWidth = pdf.getStringUnitWidth(totalText) * 10 / pdf.internal.scaleFactor;
+      pdf.text(totalText, tableRightEdge - totalWidth, yPosition);
+      
+      // Footer
+      yPosition = pageHeight - 40;
+      pdf.setFontSize(9);
+      pdf.setFont('helvetica', 'italic');
+      const footerText = 'This is a computer generated invoice. No signature required. Thank you for choosing us!';
+      const footerWidth = pdf.getStringUnitWidth(footerText) * 9 / pdf.internal.scaleFactor;
+      pdf.text(footerText, (pageWidth - footerWidth) / 2, yPosition);
+      
+      console.log("Direct PDF generation completed successfully!");
+      
+      // Return as blob
       return pdf.output('blob');
+      
     } catch (err) {
       console.error("Error generating PDF blob:", err);
       return null;
@@ -159,61 +335,48 @@ export default function InvoicePage({ params }: { params: { id: string } }) {
     try {
       setPdfGenerating(true);
       
-      // Wait a moment for the component to render
-      setTimeout(async () => {
-        try {
-          // Find the invoice element
-          const invoiceElement = invoiceRef.current?.querySelector('.invoice-printable');
-          if (!invoiceElement) {
-            console.error("Invoice element not found for PDF generation");
-            return;
-          }
-          
-          // Generate PDF from the element
-          const canvas = await html2canvas(invoiceElement as HTMLElement, {
-            scale: 2, // Higher scale for better quality
-            useCORS: true,
-            logging: false,
-            backgroundColor: 'white'
-          });
-          
-          const imgData = canvas.toDataURL('image/jpeg', 0.95);
-          const pdf = new jsPDF('p', 'mm', 'a4');
-          const imgWidth = 210; // A4 width in mm
-          const imgHeight = canvas.height * imgWidth / canvas.width;
-          
-          pdf.addImage(imgData, 'JPEG', 0, 0, imgWidth, imgHeight);
-          const pdfBlob = pdf.output('datauristring');
-          
-          // Upload PDF to Firebase Storage
-          const pdfFileName = `invoices/${user.uid}/${new Date().getTime()}_${invoice.id}.pdf`;
-          const storageRef = ref(storage, pdfFileName);
-          
-          // Upload PDF as data URL
-          await uploadString(storageRef, pdfBlob, 'data_url');
-          
-          // Get the download URL for the PDF
-          const pdfUrl = await getDownloadURL(storageRef);
-          
-          // Update the invoice document with the PDF URL
-          await updateDoc(doc(db, "invoices", invoice.id), { pdfUrl });
-          
-          // Update local state
-          setInvoice(prev => prev ? { ...prev, pdfUrl } : null);
-          setPdfGenerated(true);
-          
-          console.log("PDF generated and uploaded successfully");
-          console.log("PDF URL saved:", pdfUrl);
-          
-        } catch (err) {
-          console.error("Error generating PDF:", err);
-        } finally {
-          setPdfGenerating(false);
-        }
-      }, 1000); // Wait 1 second for component to render
+      // Generate PDF blob directly
+      const pdfBlob = await generatePDFBlob();
+      if (!pdfBlob) {
+        console.error("Failed to generate PDF blob");
+        setPdfGenerating(false);
+        return;
+      }
+      
+      // Set preview blob for immediate viewing
+      setPdfPreviewBlob(pdfBlob);
+      
+      // Convert blob to data URL for Firebase upload
+      const reader = new FileReader();
+      const pdfDataUrl = await new Promise<string>((resolve, reject) => {
+        reader.onload = () => resolve(reader.result as string);
+        reader.onerror = reject;
+        reader.readAsDataURL(pdfBlob);
+      });
+      
+      // Upload PDF to Firebase Storage
+      const pdfFileName = `invoices/${user.uid}/${new Date().getTime()}_${invoice.id}.pdf`;
+      const storageRef = ref(storage, pdfFileName);
+      
+      // Upload PDF as data URL
+      await uploadString(storageRef, pdfDataUrl, 'data_url');
+      
+      // Get the download URL for the PDF
+      const pdfUrl = await getDownloadURL(storageRef);
+      
+      // Update the invoice document with the PDF URL
+      await updateDoc(doc(db, "invoices", invoice.id), { pdfUrl });
+      
+      // Update local state
+      setInvoice(prev => prev ? { ...prev, pdfUrl } : null);
+      setPdfGenerated(true);
+      
+      console.log("PDF generated and uploaded successfully");
+      console.log("PDF URL saved:", pdfUrl);
       
     } catch (err) {
-      console.error("Error in PDF generation setup:", err);
+      console.error("Error generating PDF:", err);
+    } finally {
       setPdfGenerating(false);
     }
   };
@@ -248,10 +411,6 @@ export default function InvoicePage({ params }: { params: { id: string } }) {
     return null;
   }
 
-  const handlePrintInvoice = () => {
-    window.print();
-  };
-  
   // Function to handle downloading PDF if available
   const handleDownloadPdf = async () => {
     // Generate and download PDF directly if no URL available
@@ -523,27 +682,15 @@ Download PDF: ${window.location.href}`;
         </div>
       </div>
       
-      {/* Scrollable Invoice Container */}
+      {/* PDF Viewer Container */}
       <div className="px-4 md:px-8 pb-8">
-        <div className="w-full max-w-full overflow-x-auto" ref={invoiceRef}>
-          <div className="min-w-[320px] mx-auto">
-            <InvoicePreview
-              invoiceId={invoice.invoiceId || invoice.id} // Use custom invoice ID if available, fallback to document ID
-              invoiceDate={invoice.invoiceDate}
-              companyName={invoice.companyName}
-              companyVatNumber={invoice.companyVatNumber}
-              stationName={invoice.userProfile.companyName}
-              stationAddress={invoice.userProfile.address}
-              stationPhone={invoice.userProfile.phone}
-              stationEmail={invoice.userProfile.email}
-              stationVatNumber={invoice.userProfile.vatNumber}
-              items={invoice.items}
-              subTotal={invoice.subTotal}
-              vat18={invoice.vat18}
-              total={invoice.total}
-              onPrint={handlePrintInvoice}
-            />
-          </div>
+        <div className="max-w-4xl mx-auto">
+          <PDFViewer
+            pdfUrl={invoice.pdfUrl}
+            pdfBlob={pdfPreviewBlob}
+            title={`Invoice ${invoice.invoiceId || invoice.id}`}
+            loading={pdfGenerating}
+          />
         </div>
       </div>
 
