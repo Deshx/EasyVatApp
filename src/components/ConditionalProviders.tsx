@@ -4,7 +4,7 @@ import { usePathname } from 'next/navigation';
 import { AuthProvider } from "@/lib/contexts/AuthContext";
 import { FuelPricesProvider } from "@/lib/contexts/FuelPricesContext";
 import { FuelPriceHistoryProvider } from "@/lib/contexts/FuelPriceHistoryContext";
-import { DebugPanel } from "@/components/ui/DebugPanel";
+
 
 interface ConditionalProvidersProps {
   children: React.ReactNode;
@@ -29,7 +29,7 @@ export function ConditionalProviders({ children }: ConditionalProvidersProps) {
       <FuelPricesProvider>
         <FuelPriceHistoryProvider>
           {children}
-          {process.env.NODE_ENV === 'development' && <DebugPanel />}
+    
         </FuelPriceHistoryProvider>
       </FuelPricesProvider>
     </AuthProvider>

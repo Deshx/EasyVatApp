@@ -448,8 +448,8 @@ Download PDF: ${window.location.href}`;
             </Link>
           </div>
 
-          {/* Three Big Action Buttons */}
-          <div className="grid grid-cols-3 gap-2 sm:gap-4 mb-8">
+          {/* Three Sleek Action Buttons */}
+          <div className="grid grid-cols-3 gap-3 mb-6">
             {/* Download PDF Button */}
             {invoice.pdfUrl && !pdfGenerating ? (
               <a
@@ -457,31 +457,31 @@ Download PDF: ${window.location.href}`;
                 target="_blank"
                 rel="noopener noreferrer"
                 download={`invoice-${invoice.invoiceId || invoice.id}.pdf`}
-                className="flex flex-col items-center justify-center p-6 bg-blue-600 hover:bg-blue-700 text-white rounded-lg shadow-lg transition-colors duration-200 no-underline"
+                className="flex flex-col items-center justify-center p-3 bg-blue-600 hover:bg-blue-700 text-white rounded-lg shadow-md transition-colors duration-200 no-underline"
               >
-                <Download className="h-8 w-8 mb-3" />
-                <span className="text-lg font-semibold">Download Invoice</span>
-                <span className="text-sm opacity-90">Save as PDF</span>
+                <Download className="h-5 w-5 mb-1" />
+                <span className="text-sm font-medium">Download Invoice</span>
+                <span className="text-xs opacity-90">Save as PDF</span>
               </a>
             ) : (
               <button
                 onClick={handleDownloadPdf}
                 disabled={pdfGenerating}
-                className="flex flex-col items-center justify-center p-6 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-400 text-white rounded-lg shadow-lg transition-colors duration-200 disabled:cursor-not-allowed"
+                className="flex flex-col items-center justify-center p-3 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-400 text-white rounded-lg shadow-md transition-colors duration-200 disabled:cursor-not-allowed"
               >
                 {pdfGenerating ? (
                   <>
-                    <svg className="animate-spin h-8 w-8 mb-3" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                    <svg className="animate-spin h-5 w-5 mb-1" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
                       <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
                       <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                     </svg>
-                    <span className="text-lg font-semibold">Generating PDF...</span>
+                    <span className="text-sm font-medium">Generating...</span>
                   </>
                 ) : (
                   <>
-                    <Download className="h-8 w-8 mb-3" />
-                    <span className="text-lg font-semibold">Download Invoice</span>
-                    <span className="text-sm opacity-90">Save as PDF</span>
+                    <Download className="h-5 w-5 mb-1" />
+                    <span className="text-sm font-medium">Download Invoice</span>
+                    <span className="text-xs opacity-90">Save as PDF</span>
                   </>
                 )}
               </button>
@@ -491,21 +491,21 @@ Download PDF: ${window.location.href}`;
             <button
               onClick={handleShareWhatsApp}
               disabled={sharingWhatsapp || pdfGenerating}
-              className="flex flex-col items-center justify-center p-6 bg-green-600 hover:bg-green-700 disabled:bg-gray-400 text-white rounded-lg shadow-lg transition-colors duration-200 disabled:cursor-not-allowed"
+              className="flex flex-col items-center justify-center p-3 bg-green-600 hover:bg-green-700 disabled:bg-gray-400 text-white rounded-lg shadow-md transition-colors duration-200 disabled:cursor-not-allowed"
             >
               {sharingWhatsapp ? (
                 <>
-                  <svg className="animate-spin h-8 w-8 mb-3" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                  <svg className="animate-spin h-5 w-5 mb-1" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
                     <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
                     <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                   </svg>
-                  <span className="text-lg font-semibold">Sharing...</span>
+                  <span className="text-sm font-medium">Sharing...</span>
                 </>
               ) : (
                 <>
-                  <MessageCircle className="h-8 w-8 mb-3" />
-                  <span className="text-lg font-semibold">Share on WhatsApp</span>
-                  <span className="text-sm opacity-90">Send to client</span>
+                  <MessageCircle className="h-5 w-5 mb-1" />
+                  <span className="text-sm font-medium">Share on WhatsApp</span>
+                  <span className="text-xs opacity-90">Send to client</span>
                 </>
               )}
             </button>
@@ -513,33 +513,38 @@ Download PDF: ${window.location.href}`;
             {/* Email to Client Button */}
             <button
               onClick={handleEmailClient}
-              className="flex flex-col items-center justify-center p-6 bg-purple-600 hover:bg-purple-700 text-white rounded-lg shadow-lg transition-colors duration-200"
+              className="flex flex-col items-center justify-center p-3 bg-purple-600 hover:bg-purple-700 text-white rounded-lg shadow-md transition-colors duration-200"
             >
-              <Mail className="h-8 w-8 mb-3" />
-              <span className="text-lg font-semibold">Email to Client</span>
-              <span className="text-sm opacity-90">Send via email</span>
+              <Mail className="h-5 w-5 mb-1" />
+              <span className="text-sm font-medium">Email to Client</span>
+              <span className="text-xs opacity-90">Send via email</span>
             </button>
           </div>
         </div>
       </div>
       
-      <div className="flex justify-center" ref={invoiceRef}>
-        <InvoicePreview
-          invoiceId={invoice.invoiceId || invoice.id} // Use custom invoice ID if available, fallback to document ID
-          invoiceDate={invoice.invoiceDate}
-          companyName={invoice.companyName}
-          companyVatNumber={invoice.companyVatNumber}
-          stationName={invoice.userProfile.companyName}
-          stationAddress={invoice.userProfile.address}
-          stationPhone={invoice.userProfile.phone}
-          stationEmail={invoice.userProfile.email}
-          stationVatNumber={invoice.userProfile.vatNumber}
-          items={invoice.items}
-          subTotal={invoice.subTotal}
-          vat18={invoice.vat18}
-          total={invoice.total}
-          onPrint={handlePrintInvoice}
-        />
+      {/* Scrollable Invoice Container */}
+      <div className="px-4 md:px-8 pb-8">
+        <div className="w-full max-w-full overflow-x-auto" ref={invoiceRef}>
+          <div className="min-w-[320px] mx-auto">
+            <InvoicePreview
+              invoiceId={invoice.invoiceId || invoice.id} // Use custom invoice ID if available, fallback to document ID
+              invoiceDate={invoice.invoiceDate}
+              companyName={invoice.companyName}
+              companyVatNumber={invoice.companyVatNumber}
+              stationName={invoice.userProfile.companyName}
+              stationAddress={invoice.userProfile.address}
+              stationPhone={invoice.userProfile.phone}
+              stationEmail={invoice.userProfile.email}
+              stationVatNumber={invoice.userProfile.vatNumber}
+              items={invoice.items}
+              subTotal={invoice.subTotal}
+              vat18={invoice.vat18}
+              total={invoice.total}
+              onPrint={handlePrintInvoice}
+            />
+          </div>
+        </div>
       </div>
 
       {/* Email Modal */}
