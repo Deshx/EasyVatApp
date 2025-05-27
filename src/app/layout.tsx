@@ -1,9 +1,6 @@
 import "./globals.css";
 import type { Metadata } from "next";
-import { AuthProvider } from "@/lib/contexts/AuthContext";
-import { FuelPricesProvider } from "@/lib/contexts/FuelPricesContext";
-import { FuelPriceHistoryProvider } from "@/lib/contexts/FuelPriceHistoryContext";
-import { DebugPanel } from "@/components/ui/DebugPanel";
+import { ConditionalProviders } from "@/components/ConditionalProviders";
 
 export const metadata: Metadata = {
   title: "EasyVat",
@@ -18,14 +15,9 @@ export default function RootLayout({
   return (
     <html lang="en" suppressHydrationWarning>
       <body className="min-h-screen bg-background font-sans antialiased">
-        <AuthProvider>
-          <FuelPricesProvider>
-            <FuelPriceHistoryProvider>
-              {children}
-              {process.env.NODE_ENV === 'development' && <DebugPanel />}
-            </FuelPriceHistoryProvider>
-          </FuelPricesProvider>
-        </AuthProvider>
+        <ConditionalProviders>
+          {children}
+        </ConditionalProviders>
       </body>
     </html>
   );

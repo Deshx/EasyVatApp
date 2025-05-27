@@ -1,10 +1,11 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useAuth } from "@/lib/hooks/useAuth";
 import { useRouter } from "next/navigation";
-import { useEffect } from "react";
 import { StationProfileForm } from "@/components/ui/StationProfileForm";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+import PayHereButton from "@/components/ui/PayHereButton";
 
 export default function Settings() {
   const { user, loading, error } = useAuth();
@@ -16,7 +17,9 @@ export default function Settings() {
     if (!loading && !user) {
       router.push("/login");
     }
-  }, [user, loading, router]);
+      }, [user, loading, router]);
+
+
 
   if (loading) {
     return (
@@ -59,15 +62,51 @@ export default function Settings() {
           </div>
         )}
 
-        <div className="bg-white shadow rounded-xl p-6 mb-6">
-          <h2 className="text-xl font-semibold mb-4">Station Profile</h2>
-          <p className="text-gray-600 mb-6">
-            Update your filling station information below.
-          </p>
-          
-          <StationProfileForm onComplete={() => setFormSubmitted(true)} />
+        <div className="bg-white shadow rounded-xl p-6">
+          <Tabs defaultValue="profile" className="w-full">
+            <TabsList className="grid w-full grid-cols-2">
+              <TabsTrigger value="profile">Profile</TabsTrigger>
+              <TabsTrigger value="payments">Payments</TabsTrigger>
+            </TabsList>
+            
+            <TabsContent value="profile" className="mt-6">
+              <div>
+                <h2 className="text-xl font-semibold mb-4">Station Profile</h2>
+                <p className="text-gray-600 mb-6">
+                  Update your filling station information below.
+                </p>
+                
+                <StationProfileForm onComplete={() => setFormSubmitted(true)} />
+              </div>
+            </TabsContent>
+            
+            <TabsContent value="payments" className="mt-6">
+              <div>
+                <h2 className="text-xl font-semibold mb-4">Payments</h2>
+                <p className="text-gray-600 mb-6">
+                  Manage your payment settings and subscriptions.
+                </p>
+                
+                <div className="p-4 border border-gray-200 rounded-lg">
+                  <h3 className="text-lg font-medium mb-2">Make a Payment</h3>
+                  <p className="text-sm text-gray-600 mb-4">
+                    Use the secure payment gateway below to make payments.
+                  </p>
+                  
+                  <PayHereButton payId="o1d31073b" />
+                  
+                  <div className="mt-4 p-3 bg-gray-50 rounded text-sm">
+                    <p className="text-gray-600 mb-2">Payment Information:</p>
+                    <p className="text-xs text-gray-500">Secure payments powered by PayHere</p>
+                    <p className="text-xs text-gray-500">All transactions are encrypted and secure</p>
+                  </div>
+                </div>
+              </div>
+            </TabsContent>
+          </Tabs>
         </div>
       </div>
+
     </main>
   );
 } 

@@ -12,10 +12,40 @@ const firebaseConfig = {
   appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID,
 };
 
-// Initialize Firebase
-const app = getApps().length ? getApp() : initializeApp(firebaseConfig);
-const auth = getAuth(app);
-const db = getFirestore(app);
-const storage = getStorage(app);
+// Check if Firebase config is complete
+const isFirebaseConfigValid = () => {
+  return firebaseConfig.apiKey && 
+         firebaseConfig.authDomain && 
+         firebaseConfig.projectId &&
+         firebaseConfig.storageBucket &&
+         firebaseConfig.messagingSenderId &&
+         firebaseConfig.appId;
+};
+
+// Initialize Firebase with error handling
+let app, auth, db, storage;
+
+try {
+  if (isFirebaseConfigValid()) {
+    app = getApps().length ? getApp() : initializeApp(firebaseConfig);
+    auth = getAuth(app);
+    db = getFirestore(app);
+    storage = getStorage(app);
+  } else {
+    console.warn("Firebase configuration is incomplete. Some environment variables may be missing.");
+    // Create mock objects to prevent errors
+    app = null;
+    auth = null;
+    db = null;
+    storage = null;
+  }
+} catch (error) {
+  console.error("Firebase initialization error:", error);
+  // Create mock objects to prevent errors
+  app = null;
+  auth = null;
+  db = null;
+  storage = null;
+}
 
 export { app, auth, db, storage };

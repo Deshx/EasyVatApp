@@ -54,6 +54,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   // Check and update profile status
   const checkProfileStatus = async (currentUser: User): Promise<ProfileStatus> => {
     try {
+      // Check if Firestore is initialized
+      if (!db) {
+        console.warn("Firestore (db) is not initialized!");
+        return "unknown";
+      }
+      
       const profileDoc = await getDoc(doc(db, "userProfiles", currentUser.uid));
       
       if (!profileDoc.exists()) {
@@ -89,6 +95,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   // Listen for auth state changes
   useEffect(() => {
+    // Check if Firebase Auth is initialized
+    if (!auth) {
+      console.warn("Firebase Auth is not initialized!");
+      setLoading(false);
+      return;
+    }
+
     const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
       setUser(currentUser);
       
@@ -112,6 +125,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const signInWithGoogle = async () => {
     setLoading(true);
     setError(null);
+    
+    // Check if Firebase Auth is initialized
+    if (!auth) {
+      setError("Authentication system is not initialized. Please refresh the page.");
+      setLoading(false);
+      return;
+    }
+    
     const provider = new GoogleAuthProvider();
     
     provider.setCustomParameters({
@@ -151,6 +172,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const signOutUser = async () => {
     setError(null);
+    
+    // Check if Firebase Auth is initialized
+    if (!auth) {
+      setError("Authentication system is not initialized.");
+      return;
+    }
+    
     try {
       await firebaseSignOut(auth);
       setProfileStatus("unknown");
