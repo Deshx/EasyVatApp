@@ -13,7 +13,7 @@ import { PageContainer } from "@/components/ui/page-container";
 import { Download, MessageCircle, Mail } from "lucide-react";
 import EmailModal from "@/components/ui/EmailModal";
 import { EmailService } from "@/lib/services/emailService";
-import { useToast } from "@/components/ui/Toast";
+import { useToast } from "@/components/ui/toast";
 
 interface InvoiceItem {
   fuelType: string;
