@@ -132,6 +132,10 @@ class PaymentService {
    * Create or update user subscription
    */
   async updateUserSubscription(subscription: Partial<UserSubscription> & { userId: string }): Promise<void> {
+    if (!db) {
+      throw new Error('Database not initialized');
+    }
+    
     try {
       const updateData = {
         ...subscription,
@@ -149,6 +153,10 @@ class PaymentService {
    * Record payment transaction
    */
   async recordPayment(payment: Omit<PaymentHistory, 'id' | 'createdAt'>): Promise<string> {
+    if (!db) {
+      throw new Error('Database not initialized');
+    }
+    
     try {
       const paymentData = {
         ...payment,
@@ -167,6 +175,10 @@ class PaymentService {
    * Get user payment history
    */
   async getUserPaymentHistory(userId: string, limitCount: number = 50): Promise<PaymentHistory[]> {
+    if (!db) {
+      throw new Error('Database not initialized');
+    }
+    
     try {
       const q = query(
         collection(db, this.PAYMENT_HISTORY_COLLECTION),
@@ -274,7 +286,7 @@ class PaymentService {
 
       // Update subscription
       const currentSubscription = await this.getUserSubscription(userId);
-      const startDate = currentSubscription?.endDate > now ? currentSubscription.endDate : now;
+      const startDate = (currentSubscription?.endDate && currentSubscription.endDate > now) ? currentSubscription.endDate : now;
       const endDate = new Date(startDate);
       endDate.setMonth(endDate.getMonth() + 1);
 
@@ -307,6 +319,10 @@ class PaymentService {
    * Get all users for admin view
    */
   async getAllUsers(): Promise<UserProfile[]> {
+    if (!db) {
+      throw new Error('Database not initialized');
+    }
+    
     try {
       // Remove orderBy to handle documents without createdAt field
       const querySnapshot = await getDocs(collection(db, this.USER_PROFILES_COLLECTION));
@@ -346,6 +362,10 @@ class PaymentService {
    * Update user profile
    */
   async updateUserProfile(profile: Partial<UserProfile> & { uid: string }): Promise<void> {
+    if (!db) {
+      throw new Error('Database not initialized');
+    }
+    
     try {
       const updateData = {
         ...profile,

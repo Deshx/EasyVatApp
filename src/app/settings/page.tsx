@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, Suspense } from "react";
 import { useAuth } from "@/lib/hooks/useAuth";
 import { useRouter, useSearchParams } from "next/navigation";
 import { StationProfileForm } from "@/components/ui/StationProfileForm";
@@ -8,7 +8,7 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { PageContainer } from "@/components/ui/page-container";
 import { PaymentsTab } from "@/components/ui/PaymentsTab";
 
-export default function Settings() {
+function SettingsContent() {
   const { user, loading, error } = useAuth();
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -29,8 +29,6 @@ export default function Settings() {
       setActiveTab(tab);
     }
   }, [searchParams]);
-
-
 
   if (loading) {
     return (
@@ -105,5 +103,17 @@ export default function Settings() {
         </div>
       </PageContainer>
     </main>
+  );
+}
+
+export default function Settings() {
+  return (
+    <Suspense fallback={
+      <div className="flex min-h-screen items-center justify-center">
+        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500"></div>
+      </div>
+    }>
+      <SettingsContent />
+    </Suspense>
   );
 } 

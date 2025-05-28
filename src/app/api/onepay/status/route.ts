@@ -1,10 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { onepayService } from '@/lib/services/onepayService';
 
+// Mark this route as dynamic since it uses query parameters
+export const dynamic = 'force-dynamic';
+
 export async function GET(request: NextRequest) {
   try {
-    const { searchParams } = new URL(request.url);
-    const transactionId = searchParams.get('transactionId');
+    const transactionId = request.nextUrl.searchParams.get('transactionId');
 
     if (!transactionId) {
       return NextResponse.json(
