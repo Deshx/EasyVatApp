@@ -17,6 +17,10 @@ export class InvoiceIdService {
    * @returns Promise<string> - The generated invoice ID
    */
   static async generateInvoiceId(vatNumber: string): Promise<string> {
+    if (!db) {
+      throw new Error('Database not initialized');
+    }
+    
     const currentYear = new Date().getFullYear();
     const cleanVatNumber = this.cleanVatNumber(vatNumber);
     
@@ -26,7 +30,7 @@ export class InvoiceIdService {
     try {
       // Use a transaction to ensure atomicity when incrementing counter
       const invoiceId = await runTransaction(db, async (transaction) => {
-        const counterRef = doc(db, this.COUNTER_COLLECTION, counterId);
+        const counterRef = doc(db!, this.COUNTER_COLLECTION, counterId);
         const counterDoc = await transaction.get(counterRef);
         
         let count = 1;
@@ -93,6 +97,10 @@ export class InvoiceIdService {
    * @returns Promise<number> - Current counter value
    */
   static async getCurrentCount(vatNumber: string, year?: number): Promise<number> {
+    if (!db) {
+      throw new Error('Database not initialized');
+    }
+    
     const targetYear = year || new Date().getFullYear();
     const cleanVatNumber = this.cleanVatNumber(vatNumber);
     const counterId = `${cleanVatNumber}-${targetYear}`;
@@ -120,6 +128,10 @@ export class InvoiceIdService {
    * @param newCount - The new count to set
    */
   static async resetCounter(vatNumber: string, year: number, newCount: number = 0): Promise<void> {
+    if (!db) {
+      throw new Error('Database not initialized');
+    }
+    
     const cleanVatNumber = this.cleanVatNumber(vatNumber);
     const counterId = `${cleanVatNumber}-${year}`;
     

@@ -12,7 +12,7 @@ export function DebugPanel() {
   
   useEffect(() => {
     const fetchProfileData = async () => {
-      if (!user) return;
+      if (!user || !db) return;
       
       try {
         const profileDoc = await getDoc(doc(db, "userProfiles", user.uid));

@@ -87,7 +87,7 @@ export default function Settings() {
                   Update your filling station information below.
                 </p>
                 
-                <StationProfileForm onComplete={() => setFormSubmitted(true)} />
+                <StationProfileForm />
               </div>
             </TabsContent>
             

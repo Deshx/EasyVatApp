@@ -34,7 +34,7 @@ export function StationProfileForm() {
   // Fetch existing profile data if available
   useEffect(() => {
     const fetchProfile = async () => {
-      if (!user) return;
+      if (!user || !db) return;
       
       try {
         setLoading(true);
@@ -65,7 +65,7 @@ export function StationProfileForm() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!user) return;
+    if (!user || !db) return;
 
     try {
       setSubmitting(true);

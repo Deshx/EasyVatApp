@@ -28,6 +28,10 @@ class PaymentService {
    * Get global subscription settings
    */
   async getGlobalSettings(): Promise<GlobalSettings> {
+    if (!db) {
+      throw new Error('Database not initialized');
+    }
+    
     try {
       const settingsDoc = await getDoc(doc(db, this.GLOBAL_SETTINGS_COLLECTION, this.SETTINGS_DOC_ID));
       
@@ -70,6 +74,10 @@ class PaymentService {
    * Update global subscription settings
    */
   async updateGlobalSettings(settings: Partial<GlobalSettings>, updatedBy: string): Promise<void> {
+    if (!db) {
+      throw new Error('Database not initialized');
+    }
+    
     try {
       const updateData = {
         ...settings,
@@ -88,6 +96,10 @@ class PaymentService {
    * Get user subscription status
    */
   async getUserSubscription(userId: string): Promise<UserSubscription | null> {
+    if (!db) {
+      throw new Error('Database not initialized');
+    }
+    
     try {
       const subscriptionDoc = await getDoc(doc(db, this.SUBSCRIPTIONS_COLLECTION, userId));
       

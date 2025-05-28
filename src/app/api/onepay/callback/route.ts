@@ -31,6 +31,12 @@ export async function POST(request: NextRequest) {
 async function processPaymentCallback(data: OnePayCallbackData) {
   const userId = data.additional_data; // We stored userId in additional_data
   
+  // Check if userId is valid
+  if (!userId) {
+    console.error('OnePay callback missing userId in additional_data:', data);
+    return;
+  }
+  
   console.log(`Processing OnePay callback for user ${userId}:`, {
     transactionId: data.transaction_id,
     status: data.status,
@@ -88,7 +94,7 @@ async function processPaymentCallback(data: OnePayCallbackData) {
     // Log the error for investigation
     try {
       await paymentService.recordPayment({
-        userId: userId || 'unknown',
+        userId: userId,
         transactionId: data.transaction_id,
         amount: 0,
         currency: 'LKR',

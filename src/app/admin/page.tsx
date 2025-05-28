@@ -695,7 +695,7 @@ export default function AdminPanel() {
                           )}
                         </div>
                         <p className="text-orange-600 text-sm mt-2">
-                          Click "Fix Issues" to set these users to inactive subscriptions.
+                          Click &quot;Fix Issues&quot; to set these users to inactive subscriptions.
                         </p>
                       </div>
                     )}

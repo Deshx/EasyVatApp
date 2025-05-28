@@ -36,7 +36,7 @@ export default function PaymentCancelPage() {
             <h3 className="font-semibold text-yellow-900 mb-2">Need help?</h3>
             <ul className="text-sm text-yellow-800 space-y-1">
               <li>• Try the payment process again</li>
-              <li>• Contact support if you're experiencing issues</li>
+              <li>• Contact support if you&apos;re experiencing issues</li>
               <li>• Check your payment method details</li>
               <li>• Ensure your card has sufficient funds</li>
             </ul>

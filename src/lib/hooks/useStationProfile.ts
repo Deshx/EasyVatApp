@@ -22,7 +22,7 @@ export function useStationProfile() {
 
   useEffect(() => {
     const fetchProfile = async () => {
-      if (!user) {
+      if (!user || !db) {
         setProfile(null);
         setLoading(false);
         return;

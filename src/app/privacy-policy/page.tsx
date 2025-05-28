@@ -20,7 +20,7 @@ export default function PrivacyPolicy() {
           <h1 className="text-3xl font-bold mb-8 text-gray-900">Privacy Policy</h1>
           <div className="prose prose-gray max-w-none">
             <p className="text-lg mb-6">
-              At EasyVat, we are committed to protecting the privacy and security of our customers' personal information. 
+              At EasyVat, we are committed to protecting the privacy and security of our customers&apos; personal information. 
               This Privacy Policy outlines how we collect, use, and safeguard your information when you visit or use our 
               VAT invoice management platform. By using our website, you consent to the practices described in this policy.
             </p>
@@ -89,7 +89,7 @@ export default function PrivacyPolicy() {
             <h2 className="text-2xl font-semibold mt-8 mb-4 text-gray-900">Changes to the Privacy Policy</h2>
             <p className="mb-6">
               We reserve the right to update or modify this Privacy Policy at any time. Any changes will be posted on this 
-              page with a revised "last updated" date. We encourage you to review this Privacy Policy periodically to stay 
+              page with a revised &quot;last updated&quot; date. We encourage you to review this Privacy Policy periodically to stay 
               informed about how we collect, use, and protect your information.
             </p>
 

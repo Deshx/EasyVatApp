@@ -72,6 +72,12 @@ export default function InvoicePage({ params }: { params: { id: string } }) {
     const fetchInvoice = async () => {
       if (!user) return;
       
+      // Check if Firebase is properly initialized
+      if (!db) {
+        setError("Database connection error. Please try again later.");
+        return;
+      }
+      
       try {
         setPageLoading(true);
         const invoiceDoc = await getDoc(doc(db, "invoices", params.id));
@@ -341,6 +347,13 @@ export default function InvoicePage({ params }: { params: { id: string } }) {
 
   const generatePDF = async (existingBlob?: Blob) => {
     if (!invoice || !user) return;
+    
+    // Check if Firebase is properly initialized
+    if (!db || !storage) {
+      console.error("Firebase services not available");
+      setPdfGenerating(false);
+      return;
+    }
     
     try {
       setPdfGenerating(true);
@@ -698,7 +711,7 @@ Download PDF: ${window.location.href}`;
       <PageContainer className="pb-8">
           <PDFViewer
             pdfUrl={invoice.pdfUrl}
-            pdfBlob={pdfPreviewBlob}
+            pdfBlob={pdfPreviewBlob || undefined}
             title={`Invoice ${invoice.invoiceId || invoice.id}`}
             loading={pdfGenerating}
           />

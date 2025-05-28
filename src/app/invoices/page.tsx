@@ -126,7 +126,7 @@ export default function InvoicesPage() {
 
   // Fetch all invoice IDs that match current filters
   const fetchAllInvoiceIds = async (): Promise<string[]> => {
-    if (!user) return [];
+    if (!user || !db) return [];
     
     try {
       const baseQuery = query(
@@ -221,7 +221,7 @@ export default function InvoicesPage() {
   }, [user, searchTerm, dateFrom, dateTo]);
 
   const buildQuery = (direction: 'next' | 'prev' | 'first' = 'first', startDoc?: DocumentSnapshot) => {
-    if (!user) return null;
+    if (!user || !db) return null;
     
     // Use simpler query to avoid composite index requirements
     // We'll do filtering client-side in fetchInvoices
@@ -302,7 +302,7 @@ export default function InvoicesPage() {
       
       // Check if there are more documents for next page
       let hasNext = false;
-      if (lastDoc && querySnapshot.docs.length === ITEMS_PER_PAGE) {
+      if (lastDoc && querySnapshot.docs.length === ITEMS_PER_PAGE && db) {
         const nextQuery = query(
           collection(db, "invoices"),
           where("userId", "==", user.uid),
@@ -407,6 +407,11 @@ export default function InvoicesPage() {
       return;
     }
 
+    if (!db) {
+      alert("Database connection error. Please try again later.");
+      return;
+    }
+
     try {
       setPageLoading(true);
       
@@ -426,7 +431,7 @@ export default function InvoicesPage() {
       }
       
       // Fetch detailed invoice data for selected invoices
-      const invoiceDetails = [];
+      const invoiceDetails: any[] = [];
       for (const invoiceId of selectedInvoices) {
         try {
           const invoiceRef = doc(db, "invoices", invoiceId);

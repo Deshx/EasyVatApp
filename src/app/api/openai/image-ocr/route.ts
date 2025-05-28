@@ -33,18 +33,18 @@ export async function POST(req: Request) {
       model,
       messages: [
         {
-          role: "system",
+          role: "system" as const,
           content: "You are a receipt OCR system. Extract ONLY the raw text from the image. DO NOT add any commentary, formatting, code blocks, or phrases like 'The text on the receipt is'. Return ONLY the raw text content."
         },
         {
-          role: "user",
+          role: "user" as const,
           content: [
-            { type: "text", text: prompt || "Extract all text from this image exactly as it appears." },
+            { type: "text" as const, text: prompt || "Extract all text from this image exactly as it appears." },
             {
-              type: "image_url",
+              type: "image_url" as const,
               image_url: {
                 url: base64Image,
-                detail: "high",
+                detail: "high" as const,
               },
             },
           ],

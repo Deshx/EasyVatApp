@@ -58,10 +58,10 @@ export function FuelPriceHistoryProvider({ children }: { children: React.ReactNo
   const [error, setError] = useState<string | null>(null);
   const { user } = useAuth();
 
-
-
   // Function to fetch fuel price history
   const fetchHistory = async () => {
+    if (!db) return;
+    
     setLoading(true);
     setError(null);
     try {
@@ -102,7 +102,7 @@ export function FuelPriceHistoryProvider({ children }: { children: React.ReactNo
     startDate: Date, 
     reason?: string
   ): Promise<boolean> => {
-    if (!user) {
+    if (!user || !db) {
       setError("Authentication required");
       return false;
     }
@@ -186,6 +186,11 @@ export function FuelPriceHistoryProvider({ children }: { children: React.ReactNo
       return false;
     }
 
+    if (!db) {
+      setError("Database connection error");
+      return false;
+    }
+
     // Check if user is super admin
     if (user.email !== "oceans.deshan@gmail.com") {
       setError("Super admin access required");
@@ -208,11 +213,12 @@ export function FuelPriceHistoryProvider({ children }: { children: React.ReactNo
       // Track changes
       const changes: { field: string; oldValue: any; newValue: any }[] = [];
       Object.keys(updates).forEach(field => {
-        if (currentData[field] !== updates[field]) {
+        const key = field as keyof FuelPriceHistory;
+        if (currentData[field] !== updates[key]) {
           changes.push({
             field,
             oldValue: currentData[field],
-            newValue: updates[field]
+            newValue: updates[key]
           });
         }
       });

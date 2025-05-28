@@ -166,7 +166,7 @@ export default function InvoiceForm() {
   };
 
   const searchCompaniesByVAT = async (vatNumber: string) => {
-    if (!user) return;
+    if (!user || !db) return;
     
     try {
       setLoading(true);

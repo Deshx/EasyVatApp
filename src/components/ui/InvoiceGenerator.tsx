@@ -206,7 +206,7 @@ export default function InvoiceGenerator({
   
   // Function to fetch user profile from Firebase
   const fetchUserProfile = async (): Promise<UserProfile | null> => {
-    if (!user) return null;
+    if (!user || !db) return null;
     
     try {
       const profileDoc = await getDoc(doc(db, "userProfiles", user.uid));
@@ -256,11 +256,13 @@ export default function InvoiceGenerator({
         }
       });
       
-      // Then fetch from Firestore
-      const fuelTypesSnapshot = await getDocs(collection(db, "fuelTypes"));
-      fuelTypesSnapshot.forEach(doc => {
-        fuelTypeMap[doc.id] = doc.data().name || doc.id;
-      });
+      // Then fetch from Firestore if db is available
+      if (db) {
+        const fuelTypesSnapshot = await getDocs(collection(db, "fuelTypes"));
+        fuelTypesSnapshot.forEach(doc => {
+          fuelTypeMap[doc.id] = doc.data().name || doc.id;
+        });
+      }
       
       // Cache in localStorage
       if (typeof window !== 'undefined') {
@@ -278,6 +280,11 @@ export default function InvoiceGenerator({
   const processInvoice = async () => {
     if (!user || currentBills.length === 0) {
       onError("Missing user or bill data");
+      return;
+    }
+
+    if (!db) {
+      onError("Database connection error. Please try again later.");
       return;
     }
 
