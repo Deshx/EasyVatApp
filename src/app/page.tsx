@@ -123,6 +123,43 @@ export default function Home() {
             </Button>
           </div>
         </PageContainer>
+
+      {/* Footer */}
+      <footer className="bg-white/80 backdrop-blur-sm border-t border-gray-200">
+        <PageContainer className="py-8">
+          <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
+            <div className="text-center sm:text-left">
+              <h3 className="text-lg font-semibold text-gray-900 mb-2">EasyVat</h3>
+              <p className="text-sm text-gray-600">Your VAT management made easy</p>
+            </div>
+            <div className="flex flex-col sm:flex-row gap-4 sm:gap-8 text-center">
+              <Link 
+                href="/privacy-policy" 
+                className="text-sm text-gray-600 hover:text-blue-600 transition-colors duration-200"
+              >
+                Privacy Policy
+              </Link>
+              <Link 
+                href="/terms-and-conditions" 
+                className="text-sm text-gray-600 hover:text-blue-600 transition-colors duration-200"
+              >
+                Terms and Conditions
+              </Link>
+              <Link 
+                href="/refund-policy" 
+                className="text-sm text-gray-600 hover:text-blue-600 transition-colors duration-200"
+              >
+                Refund Policy
+              </Link>
+            </div>
+          </div>
+          <div className="mt-6 pt-6 border-t border-gray-200 text-center">
+            <p className="text-xs text-gray-500">
+              © {new Date().getFullYear()} EasyVat. All rights reserved.
+            </p>
+          </div>
+        </PageContainer>
+      </footer>
     </main>
   );
 }
