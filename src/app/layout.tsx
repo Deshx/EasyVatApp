@@ -5,6 +5,11 @@ import { ConditionalProviders } from "@/components/ConditionalProviders";
 export const metadata: Metadata = {
   title: "EasyVat",
   description: "Your VAT management made easy",
+  icons: {
+    icon: "/fav.png",
+    shortcut: "/fav.png",
+    apple: "/fav.png",
+  },
 };
 
 export default function RootLayout({
