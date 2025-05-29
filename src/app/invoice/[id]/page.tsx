@@ -599,12 +599,7 @@ Download PDF: ${window.location.href}`;
       
       // Show error toast
       const errorMessage = error.message || "Failed to send email";
-      if (errorMessage.includes("only send testing emails")) {
-        showToast(
-          "⚠️ Development Mode: You can only send emails to thehowtofeed@gmail.com. To send to other recipients, verify a domain at resend.com/domains",
-          "warning"
-        );
-      } else if (errorMessage.includes("domain is not verified")) {
+      if (errorMessage.includes("domain is not verified")) {
         showToast(
           "⚠️ Domain not verified. Please verify your domain at resend.com/domains",
           "warning"

@@ -77,9 +77,9 @@ export async function POST(request: NextRequest) {
       </div>
     `;
 
-    // Send email using Resend - use Resend's default domain to avoid verification issues
+    // Send email using Resend - use verified domain
     const { data, error } = await resend.emails.send({
-      from: `${companyName} <onboarding@resend.dev>`,
+      from: `${companyName} <invoices@easyvat.lk>`,
       to: emails,
       subject: `VAT Invoice from ${companyName}`,
       html: emailContent,

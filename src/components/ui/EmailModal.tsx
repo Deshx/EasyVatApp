@@ -69,9 +69,7 @@ export default function EmailModal({
       
       // Handle specific Resend validation errors
       const errorMessage = err.message;
-      if (errorMessage.includes("only send testing emails to your own email address")) {
-        setError("⚠️ Development Mode: You can only send emails to thehowtofeed@gmail.com. To send to other recipients, verify a domain at resend.com/domains");
-      } else if (errorMessage.includes("domain is not verified")) {
+      if (errorMessage.includes("domain is not verified")) {
         setError("⚠️ Domain not verified. Please verify your domain at resend.com/domains");
       } else {
         setError("Failed to send email. Please try again.");

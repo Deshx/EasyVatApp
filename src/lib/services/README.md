@@ -142,9 +142,9 @@ The email includes:
 - Invoice details in a formatted layout
 - PDF attachment with filename `invoice-{invoiceId}.pdf`
 - Subject line: "VAT Invoice from {companyName}"
-- Sender: Uses Resend's verified domain `onboarding@resend.dev` with company name
+- Sender: Uses verified domain `invoices@easyvat.lk` with company name
 
-**Note:** The sender email uses Resend's default verified domain to avoid domain verification issues. The company name will appear as the sender name.
+**Note:** The sender email uses the verified domain easyvat.lk to ensure proper email delivery. The company name will appear as the sender name.
 
 ## Attachment Format
 
