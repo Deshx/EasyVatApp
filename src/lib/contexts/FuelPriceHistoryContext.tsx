@@ -69,19 +69,45 @@ export function FuelPriceHistoryProvider({ children }: { children: React.ReactNo
       const q = query(fuelPricesCollection, orderBy("startDate", "desc"));
       const snapshot = await getDocs(q);
       
+      // Helper function to safely convert timestamps
+      const convertTimestamp = (timestamp: any): Date | undefined => {
+        if (!timestamp) return undefined;
+        
+        // If it's already a Date object, return it
+        if (timestamp instanceof Date) return timestamp;
+        
+        // If it's a Firestore Timestamp with toDate method
+        if (timestamp && typeof timestamp.toDate === 'function') {
+          return timestamp.toDate();
+        }
+        
+        // If it's a timestamp-like object with seconds
+        if (timestamp && timestamp.seconds) {
+          return new Date(timestamp.seconds * 1000);
+        }
+        
+        // If it's a string, try to parse it
+        if (typeof timestamp === 'string') {
+          const parsed = new Date(timestamp);
+          return isNaN(parsed.getTime()) ? undefined : parsed;
+        }
+        
+        return undefined;
+      };
+      
       const priceHistory: FuelPriceHistory[] = [];
       snapshot.forEach(doc => {
         const data = doc.data();
         priceHistory.push({
           id: doc.id,
           ...data,
-          startDate: data.startDate.toDate(),
-          endDate: data.endDate?.toDate(),
-          createdAt: data.createdAt.toDate(),
-          updatedAt: data.updatedAt?.toDate(),
+          startDate: convertTimestamp(data.startDate) || new Date(),
+          endDate: convertTimestamp(data.endDate),
+          createdAt: convertTimestamp(data.createdAt) || new Date(),
+          updatedAt: convertTimestamp(data.updatedAt),
           editLog: data.editLog?.map((entry: any) => ({
             ...entry,
-            timestamp: entry.timestamp.toDate()
+            timestamp: convertTimestamp(entry.timestamp) || new Date()
           }))
         } as FuelPriceHistory);
       });

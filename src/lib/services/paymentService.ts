@@ -25,6 +25,34 @@ class PaymentService {
   private readonly SETTINGS_DOC_ID = 'subscription_settings';
 
   /**
+   * Helper function to safely convert timestamps from various formats
+   */
+  private convertTimestamp(timestamp: any): Date | undefined {
+    if (!timestamp) return undefined;
+    
+    // If it's already a Date object, return it
+    if (timestamp instanceof Date) return timestamp;
+    
+    // If it's a Firestore Timestamp with toDate method
+    if (timestamp && typeof timestamp.toDate === 'function') {
+      return timestamp.toDate();
+    }
+    
+    // If it's a timestamp-like object with seconds
+    if (timestamp && timestamp.seconds) {
+      return new Date(timestamp.seconds * 1000);
+    }
+    
+    // If it's a string, try to parse it
+    if (typeof timestamp === 'string') {
+      const parsed = new Date(timestamp);
+      return isNaN(parsed.getTime()) ? undefined : parsed;
+    }
+    
+    return undefined;
+  }
+
+  /**
    * Get global subscription settings
    */
   async getGlobalSettings(): Promise<GlobalSettings> {
@@ -45,7 +73,7 @@ class PaymentService {
           gracePeriodDays: data.gracePeriodDays || 7,
           autoRenew: data.autoRenew || true,
           defaultAccountType: data.defaultAccountType || 'paid',
-          updatedAt: data.updatedAt?.toDate() || new Date(),
+          updatedAt: this.convertTimestamp(data.updatedAt) || new Date(),
           updatedBy: data.updatedBy || 'system'
         };
       } else {
@@ -109,15 +137,15 @@ class PaymentService {
           userId: data.userId,
           status: data.status,
           subscriptionId: data.subscriptionId,
-          startDate: data.startDate?.toDate() || new Date(),
-          endDate: data.endDate?.toDate() || new Date(),
+          startDate: this.convertTimestamp(data.startDate) || new Date(),
+          endDate: this.convertTimestamp(data.endDate) || new Date(),
           amount: data.amount,
           currency: data.currency,
           interval: data.interval,
           autoRenew: data.autoRenew,
           trialUsed: data.trialUsed,
-          createdAt: data.createdAt?.toDate() || new Date(),
-          updatedAt: data.updatedAt?.toDate() || new Date()
+          createdAt: this.convertTimestamp(data.createdAt) || new Date(),
+          updatedAt: this.convertTimestamp(data.updatedAt) || new Date()
         };
       }
       
@@ -188,11 +216,12 @@ class PaymentService {
       );
       
       const querySnapshot = await getDocs(q);
+      
       return querySnapshot.docs.map(doc => ({
         id: doc.id,
         ...doc.data(),
-        createdAt: doc.data().createdAt?.toDate() || new Date(),
-        paidAt: doc.data().paidAt?.toDate()
+        createdAt: this.convertTimestamp(doc.data().createdAt) || new Date(),
+        paidAt: this.convertTimestamp(doc.data().paidAt)
       } as PaymentHistory));
     } catch (error) {
       console.error('Error getting payment history:', error);
@@ -329,13 +358,14 @@ class PaymentService {
       
       const users = querySnapshot.docs.map(doc => {
         const data = doc.data();
+        
         return {
           uid: doc.id,
           ...data,
-          createdAt: data.createdAt?.toDate() || new Date(),
-          updatedAt: data.updatedAt?.toDate() || new Date(),
-          lastLoginAt: data.lastLoginAt?.toDate(),
-          subscriptionEndDate: data.subscriptionEndDate?.toDate(),
+          createdAt: this.convertTimestamp(data.createdAt) || new Date(),
+          updatedAt: this.convertTimestamp(data.updatedAt) || new Date(),
+          lastLoginAt: this.convertTimestamp(data.lastLoginAt),
+          subscriptionEndDate: this.convertTimestamp(data.subscriptionEndDate),
           // Ensure required fields have defaults
           subscriptionStatus: data.subscriptionStatus || 'inactive',
           accountType: data.accountType || 'free',

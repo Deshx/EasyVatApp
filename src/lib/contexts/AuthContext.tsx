@@ -197,6 +197,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     try {
       console.log("Attempting to sign in with Google...");
+      
+      // Try popup first, with better error handling for CORS issues
       const result = await signInWithPopup(auth, provider);
       setUser(result.user);
       
@@ -213,13 +215,22 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     } catch (error: any) {
       console.error("Error signing in with Google:", error);
       
-      // Handle Errors
+      // Handle Errors with more specific error handling
       let errorMessage = "Failed to sign in with Google";
       
       if (error.code === 'auth/popup-closed-by-user') {
         errorMessage = "Sign-in popup was closed before completing the sign-in.";
       } else if (error.code === 'auth/popup-blocked') {
-        errorMessage = "The sign-in popup was blocked by your browser. Please allow popups for this website.";
+        errorMessage = "The sign-in popup was blocked by your browser. Please allow popups for this website and try again.";
+      } else if (error.code === 'auth/cancelled-popup-request') {
+        errorMessage = "Only one popup request is allowed at one time.";
+      } else if (error.code === 'auth/operation-not-allowed') {
+        errorMessage = "Google sign-in is not enabled. Please contact support.";
+      } else if (error.code === 'auth/unauthorized-domain') {
+        errorMessage = "This domain is not authorized for Google sign-in.";
+      } else if (error.message?.includes('Cross-Origin-Opener-Policy') || 
+                 error.message?.includes('window.closed')) {
+        errorMessage = "Sign-in was blocked by browser security policies. Please try refreshing the page and signing in again.";
       } else if (error.message) {
         errorMessage = error.message;
       }
